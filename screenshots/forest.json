@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/forest",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "MANGU Atlas",
+      "hasCanvas": false,
+      "bodyTextLen": 1213,
+      "bodyTextHash": "1760ce83d8adc559aef346e2b242d339fe744fc0cc2ca93d15a0f6891946f1a2",
+      "bodyTextPrefix": "Skip to content MANGU Atlas CATALOG AUTHORITY Command Authority ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/forest.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "MANGU Atlas",
+      "hasCanvas": false,
+      "bodyTextLen": 1147,
+      "bodyTextHash": "839c720d72036c4e99e9302b3e996e19d60720dfff634ac905d2dad0a2516e7e",
+      "bodyTextPrefix": "Skip to content Atlas Hierarchical forest Every authorized term ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/forest-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/forest.json"
+}

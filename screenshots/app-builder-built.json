@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "MANGU Atlas",
+      "hasCanvas": false,
+      "bodyTextLen": 1234,
+      "bodyTextHash": "f218680df20706205e9b055be86ee42f220bc6f13763fe2985bf6e355d81ae5c",
+      "bodyTextPrefix": "Skip to content MANGU Atlas CATALOG AUTHORITY Command Authority ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "MANGU Atlas",
+      "hasCanvas": false,
+      "bodyTextLen": 1168,
+      "bodyTextHash": "743959d31cfeaf133c99daaccdd0af99657ede48b0cee510f12cc2b179832827",
+      "bodyTextPrefix": "Skip to content Atlas MANGU PUBLISHING HOUSE Atlas Enterprise ca",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

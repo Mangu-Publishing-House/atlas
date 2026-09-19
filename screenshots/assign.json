@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/assign",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "MANGU Atlas",
+      "hasCanvas": false,
+      "bodyTextLen": 893,
+      "bodyTextHash": "19671c38a61d1fddb10056e95c1e1b374f72c7070febb9cfc93008cabd8cafb6",
+      "bodyTextPrefix": "Skip to content MANGU Atlas CATALOG AUTHORITY Command Authority ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/assign.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "MANGU Atlas",
+      "hasCanvas": false,
+      "bodyTextLen": 827,
+      "bodyTextHash": "07cc37b97b0568d7b15c40085b7e752d2331d9d2182517f3142a65d5736a3324",
+      "bodyTextPrefix": "Skip to content Atlas Assign Tag a work with 1–4 official LCGFT ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/assign-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/assign.json"
+}

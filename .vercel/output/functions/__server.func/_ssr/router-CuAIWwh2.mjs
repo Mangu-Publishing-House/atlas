@@ -1,0 +1,28422 @@
+import { i as __toESM } from "../_runtime.mjs";
+import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
+import { _ as createRootRoute, b as useRouter, d as useRouterState, g as createFileRoute, h as lazyRouteComponent, l as Scripts, m as Outlet, p as createRouter, u as HeadContent, v as Link, x as require_jsx_runtime, y as useNavigate } from "../_libs/@tanstack/react-router+[...].mjs";
+import { a as LayoutDashboard, c as ChartPie, i as Scale, l as BookOpen, n as Tags, o as FolderTree, r as Search, t as TriangleAlert } from "../_libs/lucide-react.mjs";
+import { a as union, i as string, n as number, r as object, t as literal } from "../_libs/zod.mjs";
+import { n as clsx } from "../_libs/class-variance-authority+clsx.mjs";
+import { t as twMerge } from "../_libs/tailwind-merge.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/router-CuAIWwh2.js
+var import_react = /* @__PURE__ */ __toESM(require_react());
+var import_jsx_runtime = require_jsx_runtime();
+var __defProp = Object.defineProperty;
+var __exportAll = (all, no_symbols) => {
+	let target = {};
+	for (var name in all) __defProp(target, name, {
+		get: all[name],
+		enumerable: true
+	});
+	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
+	return target;
+};
+var FALLBACK_MESSAGE = "An unexpected error occurred. Try reloading the page.";
+function errorMessage(error) {
+	if (error instanceof Error && error.message) return error.message;
+	if (typeof error === "string" && error) return error;
+	return FALLBACK_MESSAGE;
+}
+function AppErrorComponent({ error }) {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("main", {
+		className: "flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center text-fg",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+				className: "text-danger",
+				"aria-hidden": "true",
+				children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TriangleAlert, {
+					className: "size-10",
+					strokeWidth: 2
+				})
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h1", {
+				className: "font-display text-lg font-medium",
+				children: "Something went wrong"
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "max-w-md text-sm break-words text-muted",
+				children: errorMessage(error)
+			})
+		]
+	});
+}
+/**
+* App-wide client provider mounted once near the root (in `src/routes/__root.tsx`):
+*
+*   <AuthProvider><Outlet /></AuthProvider>
+*
+* Better Auth's React client (`@/lib/auth/client`) needs NO context provider —
+* its `useSession()` works standalone — so this is a passthrough today. It's
+* kept as the single, stable mount point for any future client-side providers
+* (e.g. a toast or theme provider) without churning the root shell.
+*/
+function AuthProvider({ children }) {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children });
+}
+var CONNECTOR_TOKEN_READY_EVENT = "grok:connector-token-ready";
+function isGrokEmbedderOrigin(origin) {
+	try {
+		const url = new URL(origin);
+		if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+		const host = url.hostname.toLowerCase();
+		if (host === "grok.com" || host.endsWith(".grok.com")) return true;
+		if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return true;
+		return false;
+	} catch {
+		return false;
+	}
+}
+function isSandboxPreviewGuestHost(hostname) {
+	const host = hostname.toLowerCase();
+	return host === "grok-sandbox.com" || host.endsWith(".grok-sandbox.com");
+}
+function isRemintPreviewPair(guestHost, parentHost) {
+	const guest = guestHost.toLowerCase();
+	const parent = parentHost.toLowerCase();
+	const i = guest.indexOf(".preview.");
+	if (i <= 0) return false;
+	const label = guest.slice(0, i);
+	const rest = guest.slice(i + 9);
+	if (label.includes(".") || !rest.includes(".")) return false;
+	return parent === rest || parent === `grok.${rest}`;
+}
+function resolveParentEmbedderOrigin(parentIsSelf, referrer, ancestorOrigin, guestHostname = "") {
+	if (parentIsSelf) return null;
+	for (const candidate of [referrer, ancestorOrigin ?? ""].filter(Boolean)) try {
+		const url = new URL(candidate.includes("://") ? candidate : `https://${candidate}`);
+		if (url.protocol !== "https:" && url.protocol !== "http:") continue;
+		if (isGrokEmbedderOrigin(url.origin)) return url.origin;
+		if (isSandboxPreviewGuestHost(guestHostname) || isRemintPreviewPair(guestHostname, url.hostname)) return url.origin;
+	} catch {}
+	return null;
+}
+/**
+* Guest side of the grok-web ↔ sandbox preview postMessage bridge.
+*
+* Activates only when this page is framed by an allowlisted Grok embedder.
+* Top-level runs (download/export, local `npm run dev`, deployed sites) noop.
+*/
+var PREVIEW_BRIDGE_CHANNEL = "grok-preview-bridge";
+var EnvelopeSchema = object({
+	channel: literal(PREVIEW_BRIDGE_CHANNEL),
+	version: number().int().positive(),
+	type: string().min(1)
+});
+var HelloSchema = EnvelopeSchema.extend({ type: literal("hello") });
+var NavigateSchema = EnvelopeSchema.extend({
+	type: literal("navigate"),
+	path: string().min(1)
+});
+var HistorySchema = EnvelopeSchema.extend({
+	type: literal("history"),
+	delta: union([literal(-1), literal(1)])
+});
+var ConnectorTokenReadySchema = EnvelopeSchema.extend({ type: literal("connector-token-ready") });
+function isSafeBridgePath(path) {
+	if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) return false;
+	try {
+		return new URL(path, "https://preview.invalid").origin === "https://preview.invalid";
+	} catch {
+		return false;
+	}
+}
+/**
+* Origin of the Grok embedder framing this page, or null when the page runs
+* top-level (download/export, local `npm run dev`, deployed sites) or under a
+* non-Grok parent. Client-only; null during SSR.
+*/
+function resolveCurrentEmbedderOrigin() {
+	if (typeof window === "undefined") return null;
+	const ancestorOrigin = typeof location.ancestorOrigins !== "undefined" && location.ancestorOrigins.length > 0 ? location.ancestorOrigins[0] : null;
+	return resolveParentEmbedderOrigin(window.parent === window, document.referrer, ancestorOrigin, window.location.hostname);
+}
+/**
+* Install host↔guest messaging. Returns a dispose function.
+* Noops (returns a no-op dispose) when not embedded under a Grok parent.
+*/
+function installPreviewHostBridge(options = {}) {
+	const parentOrigin = resolveCurrentEmbedderOrigin();
+	if (parentOrigin === null) return () => {};
+	const ROOT_STATE_KEY = "__grokPreviewBridgeRoot";
+	const originalPushState = window.history.pushState.bind(window.history);
+	const originalReplaceState = window.history.replaceState.bind(window.history);
+	const isAtHistoryRoot = () => {
+		const state = window.history.state;
+		return Boolean(state && typeof state === "object" && state[ROOT_STATE_KEY] === true);
+	};
+	try {
+		const current = window.history.state;
+		if (!(current !== null && typeof current === "object" && Object.prototype.hasOwnProperty.call(current, ROOT_STATE_KEY))) {
+			const isRoot = window.history.length <= 1;
+			originalReplaceState(current && typeof current === "object" ? {
+				...current,
+				[ROOT_STATE_KEY]: isRoot
+			} : { [ROOT_STATE_KEY]: isRoot }, "", window.location.href);
+		}
+	} catch {}
+	const post = (message) => {
+		window.parent.postMessage(message, parentOrigin);
+	};
+	const reportLocation = () => {
+		post({
+			channel: PREVIEW_BRIDGE_CHANNEL,
+			version: 1,
+			type: "location",
+			path: window.location.pathname || "/",
+			search: window.location.search,
+			hash: window.location.hash
+		});
+	};
+	const reportRoutes = () => {
+		const paths = options.getRoutePaths?.() ?? [];
+		post({
+			channel: PREVIEW_BRIDGE_CHANNEL,
+			version: 1,
+			type: "routes",
+			paths
+		});
+	};
+	const defaultNavigate = (path) => {
+		if (!isSafeBridgePath(path)) return;
+		try {
+			const url = new URL(path, window.location.origin);
+			if (url.origin !== window.location.origin) return;
+			const next = `${url.pathname}${url.search}${url.hash}`;
+			window.history.pushState(window.history.state, "", next);
+			window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+		} catch {}
+	};
+	const navigate = (path) => {
+		if (!isSafeBridgePath(path)) return;
+		if (options.navigate) {
+			options.navigate(path);
+			return;
+		}
+		defaultNavigate(path);
+	};
+	const announce = () => {
+		reportLocation();
+		reportRoutes();
+		post({
+			channel: PREVIEW_BRIDGE_CHANNEL,
+			version: 1,
+			type: "ready"
+		});
+	};
+	const onHello = (data) => {
+		if (!HelloSchema.safeParse(data).success) return;
+		announce();
+	};
+	const onNavigate = (data) => {
+		const parsed = NavigateSchema.safeParse(data);
+		if (!parsed.success) return;
+		navigate(parsed.data.path);
+		queueMicrotask(reportLocation);
+	};
+	const onHistory = (data) => {
+		const parsed = HistorySchema.safeParse(data);
+		if (!parsed.success) return;
+		if (parsed.data.delta === -1 && isAtHistoryRoot()) return;
+		window.history.go(parsed.data.delta);
+	};
+	const onConnectorTokenReady = (data) => {
+		if (!ConnectorTokenReadySchema.safeParse(data).success) return;
+		window.dispatchEvent(new Event(CONNECTOR_TOKEN_READY_EVENT));
+	};
+	const hostMessageHandlers = /* @__PURE__ */ new Map([
+		["hello", onHello],
+		["navigate", onNavigate],
+		["history", onHistory],
+		["connector-token-ready", onConnectorTokenReady]
+	]);
+	const onMessage = (event) => {
+		if (event.source !== window.parent) return;
+		if (event.origin !== parentOrigin) return;
+		const envelope = EnvelopeSchema.safeParse(event.data);
+		if (!envelope.success || envelope.data.version !== 1) return;
+		hostMessageHandlers.get(envelope.data.type)?.(event.data);
+	};
+	const onPopState = () => {
+		reportLocation();
+	};
+	const onHashChange = () => {
+		reportLocation();
+	};
+	window.history.pushState = (data, unused, url) => {
+		const next = data && typeof data === "object" ? {
+			...data,
+			[ROOT_STATE_KEY]: false
+		} : data;
+		originalPushState(next, unused, url);
+		reportLocation();
+	};
+	window.history.replaceState = (data, unused, url) => {
+		const next = isAtHistoryRoot() ? {
+			...data && typeof data === "object" ? data : {},
+			[ROOT_STATE_KEY]: true
+		} : data;
+		originalReplaceState(next, unused, url);
+		reportLocation();
+	};
+	window.addEventListener("message", onMessage);
+	window.addEventListener("popstate", onPopState);
+	window.addEventListener("hashchange", onHashChange);
+	announce();
+	return () => {
+		window.removeEventListener("message", onMessage);
+		window.removeEventListener("popstate", onPopState);
+		window.removeEventListener("hashchange", onHashChange);
+		window.history.pushState = originalPushState;
+		window.history.replaceState = originalReplaceState;
+	};
+}
+/** Collect static path patterns from a TanStack route tree (best-effort). */
+function collectRoutePathsFromTree(routeTree) {
+	const paths = /* @__PURE__ */ new Set();
+	const walk = (node) => {
+		if (!node || typeof node !== "object") return;
+		const record = node;
+		const full = typeof record.fullPath === "string" ? record.fullPath : typeof record.path === "string" ? record.path : null;
+		if (full !== null && full !== "") paths.add(full.startsWith("/") ? full : `/${full}`);
+		else if (full === "") paths.add("/");
+		const children = record.children;
+		if (Array.isArray(children)) for (const child of children) walk(child);
+		else if (children && typeof children === "object") for (const child of Object.values(children)) walk(child);
+	};
+	walk(routeTree);
+	return [...paths];
+}
+/**
+* Mount once in `__root.tsx` so the Grok preview chrome can drive navigation
+* (and later receive registered routes). Noops when the app is not embedded.
+*/
+function PreviewHostBridge() {
+	const router = useRouter();
+	(0, import_react.useEffect)(() => {
+		return installPreviewHostBridge({
+			navigate: (path) => {
+				router.history.push(path);
+			},
+			getRoutePaths: () => collectRoutePathsFromTree(router.routeTree)
+		});
+	}, [router]);
+	return null;
+}
+function cn(...inputs) {
+	return twMerge(clsx(inputs));
+}
+var taxonomy_default = {
+	source: "id.loc.gov SKOS bulk genreForms.skosrdf.jsonld 2026-09-15",
+	generated: "2026-09-15",
+	n: 2684,
+	rels: 3405,
+	poly: 695,
+	tops: [
+		1530,
+		2583,
+		1326,
+		1137,
+		2259,
+		1970,
+		1142,
+		1272,
+		347,
+		654,
+		1988,
+		751,
+		619,
+		557,
+		587,
+		475,
+		2359,
+		731,
+		1392,
+		709,
+		1470,
+		1920,
+		99,
+		1123,
+		1262,
+		1455,
+		1523
+	],
+	terms: [
+		{
+			"i": 0,
+			"l": "3-D films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1,
+			"l": "A'ak",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2,
+			"l": "Abbreviation dictionaries",
+			"bt": [639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 3,
+			"l": "Abecedariuses",
+			"bt": [15],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16424
+		},
+		{
+			"i": 4,
+			"l": "Abridgments",
+			"bt": [619],
+			"nt": [2456],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 5,
+			"l": "Abstract films",
+			"bt": [803],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 6,
+			"l": "Abstracts",
+			"bt": [619, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 7,
+			"l": "Academic theses",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 8,
+			"l": "Accident reports",
+			"bt": [2380],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 9,
+			"l": "Acclamations (Music)",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 10,
+			"l": "Accompaniments (Music)",
+			"bt": [1530],
+			"nt": [1966],
+			"d": 1,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 11,
+			"l": "Accordion fold books",
+			"bt": [2478],
+			"nt": [1660],
+			"d": 3,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 12,
+			"l": "Account books",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 13,
+			"l": "Acid jazz",
+			"bt": [1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 14,
+			"l": "Acronym dictionaries",
+			"bt": [639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 15,
+			"l": "Acrostics (Poetry)",
+			"bt": [2582],
+			"nt": [3],
+			"d": 3,
+			"n": 1,
+			"f": 16424
+		},
+		{
+			"i": 16,
+			"l": "Acrostics (Puzzles)",
+			"bt": [2639],
+			"nt": [682],
+			"d": 3,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 17,
+			"l": "Acting editions",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 18,
+			"l": "Action and adventure comics",
+			"bt": [463],
+			"nt": [1758, 2263],
+			"d": 3,
+			"n": 2,
+			"f": 8232
+		},
+		{
+			"i": 19,
+			"l": "Action and adventure fiction",
+			"bt": [843],
+			"nt": [
+				1948,
+				2264,
+				2333
+			],
+			"d": 2,
+			"n": 3,
+			"f": 12
+		},
+		{
+			"i": 20,
+			"l": "Action and adventure films",
+			"bt": [1516],
+			"nt": [
+				1201,
+				1403,
+				2265
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 21,
+			"l": "Action and adventure plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 22,
+			"l": "Action and adventure television programs",
+			"bt": [2419],
+			"nt": [1202, 1404],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 23,
+			"l": "Activity books",
+			"bt": [1113, 1970],
+			"nt": [456],
+			"d": 2,
+			"n": 1,
+			"f": 34
+		},
+		{
+			"i": 24,
+			"l": "Actualities (Motion pictures)",
+			"bt": [
+				1591,
+				2185,
+				2196
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 25,
+			"l": "Adaptations",
+			"bt": [619],
+			"nt": [
+				464,
+				853,
+				1602,
+				1906,
+				2398,
+				2443
+			],
+			"d": 1,
+			"n": 7,
+			"f": 0
+		},
+		{
+			"i": 26,
+			"l": "Administrative decisions",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 27,
+			"l": "Administrative regulations",
+			"bt": [1137, 1272],
+			"nt": [
+				424,
+				1493,
+				2081
+			],
+			"d": 1,
+			"n": 3,
+			"f": 2228738
+		},
+		{
+			"i": 28,
+			"l": "Advent music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 29,
+			"l": "Adventure radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 30,
+			"l": "Advertisements",
+			"bt": [1847],
+			"nt": [
+				31,
+				1724,
+				1914,
+				2090,
+				2401,
+				2440
+			],
+			"d": 2,
+			"n": 12,
+			"f": 2097152
+		},
+		{
+			"i": 31,
+			"l": "Advertising posters",
+			"bt": [30, 1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 32,
+			"l": "Aerial photographs",
+			"bt": [1736, 1994],
+			"nt": [1737],
+			"d": 2,
+			"n": 1,
+			"f": 2097442
+		},
+		{
+			"i": 33,
+			"l": "Aerial views",
+			"bt": [2571],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097440
+		},
+		{
+			"i": 34,
+			"l": "Aeronautical charts",
+			"bt": [1394],
+			"nt": [
+				137,
+				1347,
+				1768
+			],
+			"d": 2,
+			"n": 3,
+			"f": 2228512
+		},
+		{
+			"i": 35,
+			"l": "Affidavits",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 36,
+			"l": "Africanfuturist fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 37,
+			"l": "Afrobeat",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 38,
+			"l": "Afrofuturist comics",
+			"bt": [2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 39,
+			"l": "Afrofuturist fiction",
+			"bt": [2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 40,
+			"l": "Afrofuturist poetry",
+			"bt": [2134],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 41,
+			"l": "Agbadja modern (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 42,
+			"l": "Aguinaldos",
+			"bt": [415, 2246],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 43,
+			"l": "Aircraft sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 44,
+			"l": "Airs de cour",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 45,
+			"l": "Alabados",
+			"bt": [1102],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 46,
+			"l": "Alalás",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 47,
+			"l": "Albums (Books)",
+			"bt": [475, 1967],
+			"nt": [171],
+			"d": 2,
+			"n": 1,
+			"f": 2097154
+		},
+		{
+			"i": 48,
+			"l": "Alcaics",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 49,
+			"l": "Aleatory music",
+			"bt": [125],
+			"nt": [1630],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 50,
+			"l": "Aleke",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 51,
+			"l": "Alexandrines",
+			"bt": [1110],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 52,
+			"l": "All Saints' Day music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 53,
+			"l": "Allegories",
+			"bt": [1142],
+			"nt": [
+				159,
+				219,
+				1507
+			],
+			"d": 1,
+			"n": 3,
+			"f": 4194304
+		},
+		{
+			"i": 54,
+			"l": "Alleluias (Music)",
+			"bt": [1853],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 55,
+			"l": "Allemandes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 56,
+			"l": "Alma mater songs",
+			"bt": [2124],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 57,
+			"l": "Almanacs",
+			"bt": [1973, 2168],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 58,
+			"l": "Alphabet books",
+			"bt": [1747],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 59,
+			"l": "Alphabet rhymes",
+			"bt": [1611],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 60,
+			"l": "Altered books",
+			"bt": [2583],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 61,
+			"l": "Alternate takes (Sound recordings)",
+			"bt": [2259, 2326],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1026
+		},
+		{
+			"i": 62,
+			"l": "Alternative country music",
+			"bt": [539],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 63,
+			"l": "Alternative histories (Comics)",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 64,
+			"l": "Alternative histories (Drama)",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 65,
+			"l": "Alternative histories (Fiction)",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 66,
+			"l": "Alternative histories (Motion pictures)",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 67,
+			"l": "Alternative histories (Television programs)",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 68,
+			"l": "Alternative metal (Music)",
+			"bt": [69, 1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 69,
+			"l": "Alternative rock music",
+			"bt": [2033],
+			"nt": [
+				68,
+				998,
+				1015,
+				1127,
+				1338,
+				1572,
+				1580,
+				1587,
+				1808,
+				1879,
+				2184
+			],
+			"d": 3,
+			"n": 25,
+			"f": 131088
+		},
+		{
+			"i": 70,
+			"l": "Amateur films",
+			"bt": [1516],
+			"nt": [819],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 71,
+			"l": "Ambient music (Electronica)",
+			"bt": [730],
+			"nt": [602],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 72,
+			"l": "Ambient sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 73,
+			"l": "Ambrosian chants",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 74,
+			"l": "Ampelographies",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 75,
+			"l": "Amusement park music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 76,
+			"l": "Amusement ride films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 77,
+			"l": "Anacreontic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 78,
+			"l": "Anagrams",
+			"bt": [2639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 79,
+			"l": "Anatomical atlases",
+			"bt": [1113, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 80,
+			"l": "Anatomical models",
+			"bt": [1488],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 81,
+			"l": "Anecdotes",
+			"bt": [1087],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 82,
+			"l": "Angel films",
+			"bt": [828],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 83,
+			"l": "Animal comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 84,
+			"l": "Animal fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 85,
+			"l": "Animal films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 86,
+			"l": "Animal performance records",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 87,
+			"l": "Animal poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 88,
+			"l": "Animal television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 89,
+			"l": "Animated film music",
+			"bt": [1514],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 90,
+			"l": "Animated films",
+			"bt": [1516],
+			"nt": [
+				93,
+				317,
+				492,
+				581,
+				1335,
+				1364,
+				1513,
+				1761,
+				2197,
+				2315
+			],
+			"d": 2,
+			"n": 12,
+			"f": 131168
+		},
+		{
+			"i": 91,
+			"l": "Animated television music",
+			"bt": [2410],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 92,
+			"l": "Animated television programs",
+			"bt": [2419],
+			"nt": [
+				94,
+				442,
+				493,
+				1336,
+				1365
+			],
+			"d": 2,
+			"n": 6,
+			"f": 131168
+		},
+		{
+			"i": 93,
+			"l": "Anime (Motion pictures)",
+			"bt": [90],
+			"nt": [1168],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 94,
+			"l": "Anime (Television programs)",
+			"bt": [92],
+			"nt": [1169],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 95,
+			"l": "Annals and chronicles",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 96,
+			"l": "Annotated bibliographies",
+			"bt": [229],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 97,
+			"l": "Annual reports",
+			"bt": [1967, 2168],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 98,
+			"l": "Anthems",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 99,
+			"l": "Anthologies",
+			"bt": [],
+			"nt": [],
+			"d": 0,
+			"n": 0,
+			"f": 1
+		},
+		{
+			"i": 100,
+			"l": "Anthology films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 101,
+			"l": "Anthology television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 102,
+			"l": "Antimasques",
+			"bt": [833],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 103,
+			"l": "Antinovels",
+			"bt": [802],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 104,
+			"l": "Antiphonaries (Service books)",
+			"bt": [2171],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 105,
+			"l": "Antiphons (Music)",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 106,
+			"l": "Apocalyptic comics",
+			"bt": [2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 107,
+			"l": "Apocalyptic drama",
+			"bt": [2133],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 108,
+			"l": "Apocalyptic fiction",
+			"bt": [2129, 2345],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524302
+		},
+		{
+			"i": 109,
+			"l": "Apocalyptic films",
+			"bt": [2131, 2346],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 110,
+			"l": "Apocalyptic television programs",
+			"bt": [2136, 2347],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 111,
+			"l": "Apocryphal works",
+			"bt": [1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 112,
+			"l": "Apologetic writings",
+			"bt": [1137, 1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 113,
+			"l": "Appointment books",
+			"bt": [751],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 114,
+			"l": "Arabesk (Popular music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 115,
+			"l": "Arabesques (Art music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 116,
+			"l": "Archaeological surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 117,
+			"l": "Architectural drawings",
+			"bt": [690],
+			"nt": [892],
+			"d": 2,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 118,
+			"l": "Armillary spheres",
+			"bt": [359],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097440
+		},
+		{
+			"i": 119,
+			"l": "Aromantic comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 120,
+			"l": "Aromantic fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 121,
+			"l": "Aromantic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 122,
+			"l": "Arrangements (Music)",
+			"bt": [619, 1530],
+			"nt": [
+				1098,
+				1148,
+				1741,
+				2198,
+				2585
+			],
+			"d": 1,
+			"n": 5,
+			"f": 131090
+		},
+		{
+			"i": 123,
+			"l": "Art",
+			"bt": [2583],
+			"nt": [
+				128,
+				129,
+				451,
+				643,
+				1141,
+				1206,
+				1376,
+				1482,
+				1524,
+				1653,
+				1738,
+				2148,
+				2254,
+				2529,
+				2565
+			],
+			"d": 1,
+			"n": 21,
+			"f": 32
+		},
+		{
+			"i": 124,
+			"l": "Art criticism",
+			"bt": [654],
+			"nt": [465],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 125,
+			"l": "Art music",
+			"bt": [1530],
+			"nt": [
+				1,
+				49,
+				98,
+				115,
+				174,
+				178,
+				194,
+				217,
+				310,
+				327,
+				328,
+				333,
+				337,
+				342,
+				373,
+				396,
+				403,
+				498,
+				503,
+				606,
+				635,
+				697,
+				821,
+				822,
+				877,
+				926,
+				939,
+				1041,
+				1047,
+				1050,
+				1065,
+				1106,
+				1108,
+				1117,
+				1153,
+				1154,
+				1211,
+				1252,
+				1360,
+				1381,
+				1457,
+				1472,
+				1528,
+				1542,
+				1577,
+				1581,
+				1612,
+				1639,
+				1642,
+				1649,
+				1685,
+				1698,
+				1704,
+				1726,
+				1731,
+				1755,
+				1811,
+				1820,
+				1836,
+				1899,
+				1944,
+				2013,
+				2017,
+				2046,
+				2054,
+				2114,
+				2119,
+				2193,
+				2238,
+				2242,
+				2247,
+				2261,
+				2271,
+				2312,
+				2335,
+				2352,
+				2360,
+				2435,
+				2448,
+				2457,
+				2469,
+				2553,
+				2588
+			],
+			"d": 1,
+			"n": 124,
+			"f": 131088
+		},
+		{
+			"i": 126,
+			"l": "Arthurian romances",
+			"bt": [2045],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 127,
+			"l": "Artist files",
+			"bt": [751, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 128,
+			"l": "Artistamps",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 129,
+			"l": "Artists' books",
+			"bt": [123],
+			"nt": [949],
+			"d": 2,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 130,
+			"l": "Artists' statements",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 131,
+			"l": "Ascension Day music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 132,
+			"l": "Ascension Day sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 133,
+			"l": "Asexual comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 134,
+			"l": "Asexual fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 135,
+			"l": "Asexual poetry",
+			"bt": [1896],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 136,
+			"l": "Ash Wednesday sermons",
+			"bt": [1295],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 137,
+			"l": "Astronautical charts",
+			"bt": [34],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 138,
+			"l": "Astronomical models",
+			"bt": [347, 1488],
+			"nt": [359],
+			"d": 2,
+			"n": 2,
+			"f": 2097442
+		},
+		{
+			"i": 139,
+			"l": "Atellanae",
+			"bt": [833],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 140,
+			"l": "Atlases",
+			"bt": [347, 1137],
+			"nt": [
+				389,
+				490,
+				1315,
+				2645
+			],
+			"d": 1,
+			"n": 4,
+			"f": 2097410
+		},
+		{
+			"i": 141,
+			"l": "Attorneys general's opinions",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 142,
+			"l": "Aubades",
+			"bt": [1350, 1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 143,
+			"l": "Auction catalogs",
+			"bt": [2085],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 144,
+			"l": "Audience participation radio programs",
+			"bt": [1941],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 145,
+			"l": "Audience participation television programs",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 146,
+			"l": "Audio equipment test recordings",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 147,
+			"l": "Audio guides",
+			"bt": [1137, 2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2098178
+		},
+		{
+			"i": 148,
+			"l": "Audio interactive games",
+			"bt": [1886, 2259],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1026
+		},
+		{
+			"i": 149,
+			"l": "Audiobooks",
+			"bt": [2259],
+			"nt": [390, 2363],
+			"d": 1,
+			"n": 2,
+			"f": 66560
+		},
+		{
+			"i": 150,
+			"l": "Autobiographical comics",
+			"bt": [156, 234],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 2109482
+		},
+		{
+			"i": 151,
+			"l": "Autobiographical drama",
+			"bt": [156, 236],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2134026
+		},
+		{
+			"i": 152,
+			"l": "Autobiographical fiction",
+			"bt": [237],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 153,
+			"l": "Autobiographical films",
+			"bt": [156, 238],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2232418
+		},
+		{
+			"i": 154,
+			"l": "Autobiographical poetry",
+			"bt": [156, 241],
+			"nt": [511],
+			"d": 3,
+			"n": 1,
+			"f": 2117642
+		},
+		{
+			"i": 155,
+			"l": "Autobiographical television programs",
+			"bt": [156, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2232418
+		},
+		{
+			"i": 156,
+			"l": "Autobiographies",
+			"bt": [244],
+			"nt": [
+				150,
+				151,
+				153,
+				154,
+				155,
+				338,
+				1440,
+				1757,
+				2219
+			],
+			"d": 2,
+			"n": 10,
+			"f": 2101248
+		},
+		{
+			"i": 157,
+			"l": "Autograph verse",
+			"bt": [1619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 158,
+			"l": "Autographs",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 159,
+			"l": "Autos sacramentales",
+			"bt": [53, 1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 4227082
+		},
+		{
+			"i": 160,
+			"l": "Avadana stories",
+			"bt": [244, 1326],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2101258
+		},
+		{
+			"i": 161,
+			"l": "Aviation films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 162,
+			"l": "Aviation television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 163,
+			"l": "Avodah piyyutim",
+			"bt": [1762],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 164,
+			"l": "Award presentations (Motion pictures)",
+			"bt": [1591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 165,
+			"l": "Award presentations (Radio programs)",
+			"bt": [166, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 166,
+			"l": "Award presentations (Sound recordings)",
+			"bt": [2259],
+			"nt": [165],
+			"d": 1,
+			"n": 1,
+			"f": 1024
+		},
+		{
+			"i": 167,
+			"l": "Award presentations (Television programs)",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 168,
+			"l": "Ayres",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 169,
+			"l": "Azharot",
+			"bt": [1332],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 170,
+			"l": "B films",
+			"bt": [1352],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 171,
+			"l": "Baby books",
+			"bt": [47],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 172,
+			"l": "Bachata",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 173,
+			"l": "Background music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 174,
+			"l": "Bagatelles (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 175,
+			"l": "Bailā (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 176,
+			"l": "Ballad operas",
+			"bt": [686],
+			"nt": [1183],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 177,
+			"l": "Ballades (Formes fixes)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 178,
+			"l": "Ballades (Instrumental music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 179,
+			"l": "Ballades (Poetry)",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 180,
+			"l": "Ballads",
+			"bt": [1559],
+			"nt": [532],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 181,
+			"l": "Ballate",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 182,
+			"l": "Ballet films",
+			"bt": [590],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 183,
+			"l": "Ballet television programs",
+			"bt": [596],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 184,
+			"l": "Ballets (Dance)",
+			"bt": [497],
+			"nt": [1078],
+			"d": 2,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 185,
+			"l": "Ballets (Music)",
+			"bt": [591, 686],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 186,
+			"l": "Balletti (Part songs)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 187,
+			"l": "Ballroom dances",
+			"bt": [587],
+			"nt": [915, 2592],
+			"d": 1,
+			"n": 2,
+			"f": 0
+		},
+		{
+			"i": 188,
+			"l": "Bambucos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 189,
+			"l": "Banda (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 190,
+			"l": "Bangsawan (Music)",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 191,
+			"l": "Bar journals",
+			"bt": [1272, 1719],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 192,
+			"l": "Bar mitzvah sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 193,
+			"l": "Barbershop (Music)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 194,
+			"l": "Barcaroles",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 195,
+			"l": "Barong (Music)",
+			"bt": [
+				591,
+				686,
+				2489
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 196,
+			"l": "Barong plays",
+			"bt": [589, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 197,
+			"l": "Barrelhouse (Music)",
+			"bt": [261],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 198,
+			"l": "Basses danses (Dance)",
+			"bt": [546],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 199,
+			"l": "Basses danses (Music)",
+			"bt": [547],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 200,
+			"l": "Bath books",
+			"bt": [1747, 2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 201,
+			"l": "Bathetic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 202,
+			"l": "Bathymetric maps",
+			"bt": [2474],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 203,
+			"l": "Battle-cries",
+			"bt": [1086],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 204,
+			"l": "Bawdy fiction",
+			"bt": [1089],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 205,
+			"l": "Bawdy plays",
+			"bt": [460],
+			"nt": [2112],
+			"d": 3,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 206,
+			"l": "Bawdy poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 207,
+			"l": "Bawdy songs",
+			"bt": [1093],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 208,
+			"l": "Beach party films",
+			"bt": [2382],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 209,
+			"l": "Beast epics",
+			"bt": [1558, 2108],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 210,
+			"l": "Beatboxing",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 211,
+			"l": "Beauty contest films",
+			"bt": [1591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 212,
+			"l": "Beauty contest television programs",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 213,
+			"l": "Beguines (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 214,
+			"l": "Bellydance music",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 215,
+			"l": "Benediction of the Blessed Sacrament (Music)",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 216,
+			"l": "Benga (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 217,
+			"l": "Berceuses",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 218,
+			"l": "Bergerettes (Songs)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 219,
+			"l": "Bestiaries",
+			"bt": [53, 1326],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194314
+		},
+		{
+			"i": 220,
+			"l": "Bhangra (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 221,
+			"l": "Bharatanatyam",
+			"bt": [497, 2075],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 222,
+			"l": "Bhāwāiyā",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 223,
+			"l": "Bible comics",
+			"bt": [1982],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 224,
+			"l": "Bible fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 225,
+			"l": "Bible films",
+			"bt": [1986],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 226,
+			"l": "Bible plays",
+			"bt": [1984],
+			"nt": [1693, 1885],
+			"d": 3,
+			"n": 2,
+			"f": 32776
+		},
+		{
+			"i": 227,
+			"l": "Bible stories",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 228,
+			"l": "Bible television programs",
+			"bt": [1991],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 229,
+			"l": "Bibliographies",
+			"bt": [1973],
+			"nt": [
+				96,
+				233,
+				999
+			],
+			"d": 2,
+			"n": 3,
+			"f": 2097152
+		},
+		{
+			"i": 230,
+			"l": "Biker poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 231,
+			"l": "Bikutsi",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 232,
+			"l": "Bills of sale",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 233,
+			"l": "Bio-bibliographies",
+			"bt": [229, 244],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2101250
+		},
+		{
+			"i": 234,
+			"l": "Biographical comics",
+			"bt": [244, 1590],
+			"nt": [150],
+			"d": 4,
+			"n": 1,
+			"f": 2109482
+		},
+		{
+			"i": 235,
+			"l": "Biographical dictionaries",
+			"bt": [244, 639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2101250
+		},
+		{
+			"i": 236,
+			"l": "Biographical drama",
+			"bt": [244, 684],
+			"nt": [151],
+			"d": 2,
+			"n": 1,
+			"f": 2134026
+		},
+		{
+			"i": 237,
+			"l": "Biographical fiction",
+			"bt": [843],
+			"nt": [152],
+			"d": 2,
+			"n": 1,
+			"f": 12
+		},
+		{
+			"i": 238,
+			"l": "Biographical films",
+			"bt": [1516],
+			"nt": [153, 1023],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 239,
+			"l": "Biographical musicals",
+			"bt": [1541],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 240,
+			"l": "Biographical operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 241,
+			"l": "Biographical poetry",
+			"bt": [244, 1771],
+			"nt": [154, 2561],
+			"d": 2,
+			"n": 3,
+			"f": 2117642
+		},
+		{
+			"i": 242,
+			"l": "Biographical radio programs",
+			"bt": [244, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2233474
+		},
+		{
+			"i": 243,
+			"l": "Biographical television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 244,
+			"l": "Biographies",
+			"bt": [557, 1137],
+			"nt": [
+				156,
+				160,
+				233,
+				234,
+				235,
+				236,
+				241,
+				242,
+				1024
+			],
+			"d": 1,
+			"n": 20,
+			"f": 2101250
+		},
+		{
+			"i": 245,
+			"l": "Biostatistics",
+			"bt": [2305],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 246,
+			"l": "Bisexual comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 247,
+			"l": "Bisexual drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 248,
+			"l": "Bisexual fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 249,
+			"l": "Bisexual films",
+			"bt": [1895],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 250,
+			"l": "Bisexual poetry",
+			"bt": [1896],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 251,
+			"l": "Bizarro fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 252,
+			"l": "Black humor",
+			"bt": [1087, 1326],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 10
+		},
+		{
+			"i": 253,
+			"l": "Black metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 254,
+			"l": "Blackout sketches",
+			"bt": [462, 2012],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32794
+		},
+		{
+			"i": 255,
+			"l": "Blank forms",
+			"bt": [751, 1137],
+			"nt": [1282],
+			"d": 1,
+			"n": 1,
+			"f": 2097154
+		},
+		{
+			"i": 256,
+			"l": "Blank verse",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 257,
+			"l": "Blaxploitation films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 258,
+			"l": "Block diagrams",
+			"bt": [1980],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097440
+		},
+		{
+			"i": 259,
+			"l": "Blogs",
+			"bt": [1137],
+			"nt": [1454],
+			"d": 1,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 260,
+			"l": "Bluegrass music",
+			"bt": [539],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 261,
+			"l": "Blues (Music)",
+			"bt": [899, 1794],
+			"nt": [
+				197,
+				263,
+				272,
+				1198,
+				2037
+			],
+			"d": 2,
+			"n": 6,
+			"f": 131090
+		},
+		{
+			"i": 262,
+			"l": "Blues poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 263,
+			"l": "Blues-rock music",
+			"bt": [261, 2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 264,
+			"l": "Board books",
+			"bt": [1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 65568
+		},
+		{
+			"i": 265,
+			"l": "Board games",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 266,
+			"l": "Body horror comics",
+			"bt": [1071],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 267,
+			"l": "Body horror fiction",
+			"bt": [1072],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 268,
+			"l": "Body horror films",
+			"bt": [1073],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 269,
+			"l": "Body horror television programs",
+			"bt": [1077],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 270,
+			"l": "Boleros (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 271,
+			"l": "Boogaloos (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 272,
+			"l": "Boogie woogie (Music)",
+			"bt": [261, 591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 273,
+			"l": "Book objects",
+			"bt": [2148],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 274,
+			"l": "Book of Mormon comics",
+			"bt": [1982],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 275,
+			"l": "Book of Mormon plays",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 276,
+			"l": "Book of Mormon stories",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 277,
+			"l": "Book review radio programs",
+			"bt": [279, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 278,
+			"l": "Book review television programs",
+			"bt": [279, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 279,
+			"l": "Book reviews",
+			"bt": [2010],
+			"nt": [277, 278],
+			"d": 2,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 280,
+			"l": "Bootlegs (Sound recordings)",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 281,
+			"l": "Bop (Music)",
+			"bt": [1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 282,
+			"l": "Bop (Poetry)",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 283,
+			"l": "Bossa nova (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 284,
+			"l": "Botanical surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 285,
+			"l": "Bottle-charts",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 286,
+			"l": "Bounce (Music)",
+			"bt": [1953],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 287,
+			"l": "Bourrées (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 288,
+			"l": "Boys love (Fiction)",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 289,
+			"l": "Boys love (Manga)",
+			"bt": [1386],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 290,
+			"l": "Braille books",
+			"bt": [2359],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 65536
+		},
+		{
+			"i": 291,
+			"l": "Braille periodicals",
+			"bt": [1719, 2359],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2162690
+		},
+		{
+			"i": 292,
+			"l": "Branles (Dance)",
+			"bt": [546, 896],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 293,
+			"l": "Branles (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 294,
+			"l": "Breakcore (Music)",
+			"bt": [1130, 1200],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 295,
+			"l": "Brega (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 296,
+			"l": "Breviaries",
+			"bt": [1330],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 6293504
+		},
+		{
+			"i": 297,
+			"l": "Broadsides",
+			"bt": [751, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 298,
+			"l": "Brunettes (Songs)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 299,
+			"l": "Buddy films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 300,
+			"l": "Buddy television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 301,
+			"l": "Bugaku (Music)",
+			"bt": [591, 939],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 302,
+			"l": "Bullerengue (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 303,
+			"l": "Bumper stickers",
+			"bt": [751],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 304,
+			"l": "Burlesques (Literature)",
+			"bt": [1679],
+			"nt": [2112],
+			"d": 2,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 305,
+			"l": "Burrakatha plays",
+			"bt": [897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 306,
+			"l": "Business correspondence",
+			"bt": [531],
+			"nt": [1703],
+			"d": 3,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 307,
+			"l": "By-laws",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 308,
+			"l": "Cacce (Part songs)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 309,
+			"l": "Cadastral maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 310,
+			"l": "Cadenzas",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 311,
+			"l": "Cajun music",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 312,
+			"l": "Calaveras",
+			"bt": [1092, 1619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 313,
+			"l": "Calendars",
+			"bt": [751, 1973],
+			"nt": [1720],
+			"d": 2,
+			"n": 1,
+			"f": 2097154
+		},
+		{
+			"i": 314,
+			"l": "Call documents",
+			"bt": [1967, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 315,
+			"l": "Calonarang plays",
+			"bt": [589, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 316,
+			"l": "Calypso (Music)",
+			"bt": [
+				591,
+				899,
+				1794
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 317,
+			"l": "Cameraless animation films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 318,
+			"l": "Camp songs",
+			"bt": [930, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 319,
+			"l": "Campaign songs",
+			"bt": [
+				930,
+				1847,
+				2246
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228242
+		},
+		{
+			"i": 320,
+			"l": "Campaign speeches",
+			"bt": [2273],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 321,
+			"l": "Campursari",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 322,
+			"l": "Campus fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 323,
+			"l": "Campus maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 324,
+			"l": "Cancans (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 325,
+			"l": "Candlemas music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 326,
+			"l": "Candombes (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 327,
+			"l": "Canons (Music)",
+			"bt": [125],
+			"nt": [2060],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 328,
+			"l": "Cantatas",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 329,
+			"l": "Canti carnascialeschi",
+			"bt": [343, 1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 330,
+			"l": "Canticles",
+			"bt": [2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 331,
+			"l": "Cantillations",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 332,
+			"l": "Cantorial music",
+			"bt": [379, 2353],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 333,
+			"l": "Canzonas (Instrumental music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 334,
+			"l": "Canzonets (Part songs)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 335,
+			"l": "Caper films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 336,
+			"l": "Caper television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 337,
+			"l": "Capriccios (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 338,
+			"l": "Captivity narratives",
+			"bt": [156],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2101248
+		},
+		{
+			"i": 339,
+			"l": "Car-chase films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 340,
+			"l": "Card games",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 341,
+			"l": "Caricatures",
+			"bt": [1087, 1751],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 342,
+			"l": "Carnatic music",
+			"bt": [125],
+			"nt": [2679],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 343,
+			"l": "Carnival music",
+			"bt": [791],
+			"nt": [329, 923],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 344,
+			"l": "Carol texts",
+			"bt": [2244],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 345,
+			"l": "Carolina beach music",
+			"bt": [
+				591,
+				2016,
+				2253
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 346,
+			"l": "Carols",
+			"bt": [2246],
+			"nt": [1233],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 347,
+			"l": "Cartographic materials",
+			"bt": [],
+			"nt": [
+				138,
+				140,
+				348,
+				752,
+				960,
+				965,
+				967,
+				987,
+				1394,
+				1980,
+				1994,
+				2571
+			],
+			"d": 0,
+			"n": 81,
+			"f": 131329
+		},
+		{
+			"i": 348,
+			"l": "Cartographic materials for people with visual disabilities",
+			"bt": [
+				347,
+				1137,
+				2359
+			],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097410
+		},
+		{
+			"i": 349,
+			"l": "Cartonera books",
+			"bt": [751, 1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 10
+		},
+		{
+			"i": 350,
+			"l": "Cartoons (Humor)",
+			"bt": [1087, 1751],
+			"nt": [719, 1776],
+			"d": 2,
+			"n": 2,
+			"f": 34
+		},
+		{
+			"i": 351,
+			"l": "Cartoons (Working drawings)",
+			"bt": [690],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 352,
+			"l": "Case studies",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 353,
+			"l": "Casebooks (Law)",
+			"bt": [1272, 2436],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4325890
+		},
+		{
+			"i": 354,
+			"l": "Catalogs",
+			"bt": [1973],
+			"nt": [
+				355,
+				452,
+				544,
+				653,
+				797,
+				873,
+				1307,
+				1987,
+				2085,
+				2445
+			],
+			"d": 2,
+			"n": 15,
+			"f": 2097152
+		},
+		{
+			"i": 355,
+			"l": "Catalogues raisonnés",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 356,
+			"l": "Catechisms",
+			"bt": [1142, 1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4196354
+		},
+		{
+			"i": 357,
+			"l": "Cavachas (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 358,
+			"l": "Celestial charts",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 359,
+			"l": "Celestial globes",
+			"bt": [138],
+			"nt": [118],
+			"d": 3,
+			"n": 1,
+			"f": 2228512
+		},
+		{
+			"i": 360,
+			"l": "Cell phone novels",
+			"bt": [1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 361,
+			"l": "Celtic music",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 362,
+			"l": "Census data",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 363,
+			"l": "Centos",
+			"bt": [1699, 1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 364,
+			"l": "Cerdd dant",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 365,
+			"l": "Ceremonial dances",
+			"bt": [587],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 366,
+			"l": "Ch'anggŭk",
+			"bt": [686, 899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 367,
+			"l": "Cha-chas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 368,
+			"l": "Chaabi",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 369,
+			"l": "Chacareras (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 370,
+			"l": "Chaconnes (Dance)",
+			"bt": [497],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 371,
+			"l": "Chaconnes (Music)",
+			"bt": [591, 2553],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 372,
+			"l": "Chamamé (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 373,
+			"l": "Chamber music",
+			"bt": [125],
+			"nt": [1120, 1683],
+			"d": 2,
+			"n": 14,
+			"f": 131088
+		},
+		{
+			"i": 374,
+			"l": "Chamber operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 375,
+			"l": "Champeta (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 376,
+			"l": "Chanchona (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 377,
+			"l": "Changüí",
+			"bt": [2240],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 378,
+			"l": "Chansons de geste",
+			"bt": [755],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 379,
+			"l": "Chants",
+			"bt": [1530],
+			"nt": [
+				73,
+				105,
+				331,
+				332,
+				1011,
+				1643,
+				1853,
+				1857,
+				1902,
+				2006,
+				2183,
+				2191,
+				2542
+			],
+			"d": 1,
+			"n": 23,
+			"f": 131088
+		},
+		{
+			"i": 380,
+			"l": "Chapbooks",
+			"bt": [751],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 381,
+			"l": "Chapka",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 382,
+			"l": "Charades",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 383,
+			"l": "Charters and articles of incorporation",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 384,
+			"l": "Chase films",
+			"bt": [2185],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 385,
+			"l": "Chastushki",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 386,
+			"l": "Checklists",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 387,
+			"l": "Cheers",
+			"bt": [1086],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 388,
+			"l": "Chicha",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 389,
+			"l": "Children's atlases",
+			"bt": [140],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097408
+		},
+		{
+			"i": 390,
+			"l": "Children's audiobooks",
+			"bt": [149, 394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 66562
+		},
+		{
+			"i": 391,
+			"l": "Children's films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 392,
+			"l": "Children's maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 393,
+			"l": "Children's radio programs",
+			"bt": [394, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 394,
+			"l": "Children's sound recordings",
+			"bt": [2259],
+			"nt": [390, 393],
+			"d": 1,
+			"n": 2,
+			"f": 1024
+		},
+		{
+			"i": 395,
+			"l": "Children's television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 396,
+			"l": "Chinese operas",
+			"bt": [125, 686],
+			"nt": [1487],
+			"d": 2,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 397,
+			"l": "Chiptunes",
+			"bt": [491, 730],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 398,
+			"l": "Chirographa (Personal correspondence)",
+			"bt": [1721, 1988],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 399,
+			"l": "Choose-your-own stories",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 400,
+			"l": "Choose-your-own-story comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 401,
+			"l": "Chopped and screwed (Music)",
+			"bt": [1953],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 402,
+			"l": "Choral novels",
+			"bt": [1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 403,
+			"l": "Chorale preludes",
+			"bt": [125, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 404,
+			"l": "Chorales",
+			"bt": [1102],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 405,
+			"l": "Choros",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 406,
+			"l": "Chorus scores",
+			"bt": [2142],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 407,
+			"l": "Christian fiction",
+			"bt": [1985],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 408,
+			"l": "Christian films",
+			"bt": [1986],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 409,
+			"l": "Christian metal (Music)",
+			"bt": [411, 1040],
+			"nt": [],
+			"d": 6,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 410,
+			"l": "Christian radio programs",
+			"bt": [1990],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 411,
+			"l": "Christian rock music",
+			"bt": [518, 2033],
+			"nt": [409],
+			"d": 5,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 412,
+			"l": "Christian television programs",
+			"bt": [1991],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 413,
+			"l": "Christmas fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 414,
+			"l": "Christmas films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 415,
+			"l": "Christmas music",
+			"bt": [791],
+			"nt": [42, 1706],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 416,
+			"l": "Christmas pantomimes",
+			"bt": [417],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 417,
+			"l": "Christmas plays",
+			"bt": [684],
+			"nt": [416],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 418,
+			"l": "Christmas poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 419,
+			"l": "Christmas radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 420,
+			"l": "Christmas sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 421,
+			"l": "Christmas television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 422,
+			"l": "Chronologies",
+			"bt": [1973],
+			"nt": [966],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 423,
+			"l": "Church covenants",
+			"bt": [520, 1988],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2230786
+		},
+		{
+			"i": 424,
+			"l": "Church orders",
+			"bt": [27, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2230786
+		},
+		{
+			"i": 425,
+			"l": "Chutney (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 426,
+			"l": "Chāhārmezrābs",
+			"bt": [606],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 427,
+			"l": "Cinquains",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 428,
+			"l": "Cinéma vérité films",
+			"bt": [661],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 429,
+			"l": "Circus films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 430,
+			"l": "Circus music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 431,
+			"l": "Circus route books",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 432,
+			"l": "Citators",
+			"bt": [1272, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 433,
+			"l": "City directories",
+			"bt": [647],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 434,
+			"l": "City mysteries",
+			"bt": [622],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 1048588
+		},
+		{
+			"i": 435,
+			"l": "City sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 436,
+			"l": "City symphonies (Motion pictures)",
+			"bt": [1591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 437,
+			"l": "Claims",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 438,
+			"l": "Classical music radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 439,
+			"l": "Classifications",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 440,
+			"l": "Clausulas (Songs)",
+			"bt": [2076, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 441,
+			"l": "Clay animation films",
+			"bt": [2315],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 442,
+			"l": "Clay animation television programs",
+			"bt": [92],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 443,
+			"l": "Clerihews",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 444,
+			"l": "Climate fiction",
+			"bt": [716],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 445,
+			"l": "Clippings",
+			"bt": [751, 793],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 446,
+			"l": "Clog dance music",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 447,
+			"l": "Closet drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 448,
+			"l": "Code lists",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 449,
+			"l": "Codes (Jewish law)",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 450,
+			"l": "Codices (Law)",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 451,
+			"l": "Collages",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 452,
+			"l": "Collection catalogs",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 453,
+			"l": "Collective labor agreements",
+			"bt": [520],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 454,
+			"l": "College life films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 455,
+			"l": "College life television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 456,
+			"l": "Coloring books",
+			"bt": [23],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 457,
+			"l": "Comedies of humours",
+			"bt": [460],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 458,
+			"l": "Comedies of manners",
+			"bt": [460],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 459,
+			"l": "Comedy films",
+			"bt": [1087, 1516],
+			"nt": [
+				603,
+				670,
+				823,
+				1680,
+				2048,
+				2068,
+				2107,
+				2146,
+				2178,
+				2215,
+				2250
+			],
+			"d": 2,
+			"n": 11,
+			"f": 131170
+		},
+		{
+			"i": 460,
+			"l": "Comedy plays",
+			"bt": [684, 1087],
+			"nt": [
+				205,
+				457,
+				458,
+				462,
+				473,
+				474,
+				833,
+				1238,
+				1250,
+				1484,
+				2105,
+				2161,
+				2470
+			],
+			"d": 2,
+			"n": 21,
+			"f": 32778
+		},
+		{
+			"i": 461,
+			"l": "Comedy rock music",
+			"bt": [1093, 2033],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 462,
+			"l": "Comedy sketches",
+			"bt": [460],
+			"nt": [
+				254,
+				692,
+				1816,
+				2212
+			],
+			"d": 3,
+			"n": 4,
+			"f": 32776
+		},
+		{
+			"i": 463,
+			"l": "Comics (Graphic works)",
+			"bt": [1113, 1326],
+			"nt": [
+				18,
+				63,
+				83,
+				400,
+				464,
+				468,
+				621,
+				672,
+				745,
+				768,
+				799,
+				825,
+				913,
+				934,
+				1003,
+				1005,
+				1007,
+				1052,
+				1071,
+				1088,
+				1128,
+				1278,
+				1372,
+				1386,
+				1388,
+				1401,
+				1501,
+				1547,
+				1590,
+				1669,
+				1777,
+				1799,
+				1865,
+				1893,
+				1982,
+				2027,
+				2041,
+				2093,
+				2122,
+				2130,
+				2220,
+				2228,
+				2282,
+				2293,
+				2337,
+				2450,
+				2528,
+				2532,
+				2595,
+				2608,
+				2617,
+				2640
+			],
+			"d": 2,
+			"n": 95,
+			"f": 8234
+		},
+		{
+			"i": 464,
+			"l": "Comics adaptations",
+			"bt": [25, 463],
+			"nt": [1004],
+			"d": 3,
+			"n": 1,
+			"f": 8234
+		},
+		{
+			"i": 465,
+			"l": "Comics criticism",
+			"bt": [124, 1324],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 466,
+			"l": "Comics journalism",
+			"bt": [1590],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 467,
+			"l": "Comics scripts",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 468,
+			"l": "Coming-of-age comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 469,
+			"l": "Coming-of-age drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 470,
+			"l": "Coming-of-age fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 471,
+			"l": "Coming-of-age films",
+			"bt": [2382],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 472,
+			"l": "Coming-of-age television programs",
+			"bt": [2383],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 473,
+			"l": "Commedia dell'arte",
+			"bt": [460],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 474,
+			"l": "Commedia erudita",
+			"bt": [460],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 475,
+			"l": "Commemorative works",
+			"bt": [],
+			"nt": [
+				47,
+				560,
+				565,
+				733,
+				765,
+				766,
+				788,
+				842,
+				1442,
+				1443,
+				1444,
+				1615,
+				2468,
+				2653
+			],
+			"d": 0,
+			"n": 17,
+			"f": 1
+		},
+		{
+			"i": 476,
+			"l": "Commendatory poetry",
+			"bt": [1619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 477,
+			"l": "Commentaries",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 478,
+			"l": "Commercial arbitration agreements",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 479,
+			"l": "Commercial treaties",
+			"bt": [2509],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 480,
+			"l": "Communion service music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 481,
+			"l": "Community affairs radio programs",
+			"bt": [1137, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 482,
+			"l": "Community cookbooks",
+			"bt": [524],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 483,
+			"l": "Community newspapers",
+			"bt": [1575],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 484,
+			"l": "Comparative maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 485,
+			"l": "Compilation films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 486,
+			"l": "Compilation radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 487,
+			"l": "Compilation television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 488,
+			"l": "Complaints (Poetry)",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 489,
+			"l": "Compline music",
+			"bt": [656],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 490,
+			"l": "Composite atlases",
+			"bt": [140],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097408
+		},
+		{
+			"i": 491,
+			"l": "Computer and video game music",
+			"bt": [930],
+			"nt": [397],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 492,
+			"l": "Computer animation films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 493,
+			"l": "Computer animation television programs",
+			"bt": [92],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 494,
+			"l": "Computer poetry",
+			"bt": [495, 805],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 495,
+			"l": "Computer-generated literature",
+			"bt": [1326],
+			"nt": [494],
+			"d": 1,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 496,
+			"l": "Comédies-ballets",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 497,
+			"l": "Concert dances",
+			"bt": [587],
+			"nt": [
+				184,
+				221,
+				370
+			],
+			"d": 1,
+			"n": 4,
+			"f": 0
+		},
+		{
+			"i": 498,
+			"l": "Concert etudes",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 499,
+			"l": "Concert films",
+			"bt": [869],
+			"nt": [2029],
+			"d": 4,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 500,
+			"l": "Concert programs",
+			"bt": [1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 501,
+			"l": "Concert television programs",
+			"bt": [2394],
+			"nt": [2030],
+			"d": 4,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 502,
+			"l": "Concerti grossi",
+			"bt": [503],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 503,
+			"l": "Concertos",
+			"bt": [125],
+			"nt": [502],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 504,
+			"l": "Concordances",
+			"bt": [1126],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 505,
+			"l": "Concordats",
+			"bt": [1272, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 506,
+			"l": "Concrete poetry",
+			"bt": [805, 2582],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16426
+		},
+		{
+			"i": 507,
+			"l": "Conductus",
+			"bt": [2076, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 508,
+			"l": "Conference materials",
+			"bt": [751, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 509,
+			"l": "Conference papers and proceedings",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 510,
+			"l": "Confessional fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 511,
+			"l": "Confessional poetry",
+			"bt": [154],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2117640
+		},
+		{
+			"i": 512,
+			"l": "Congadas (Music)",
+			"bt": [686, 899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 513,
+			"l": "Consilia",
+			"bt": [654, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131586
+		},
+		{
+			"i": 514,
+			"l": "Conspiracy films",
+			"bt": [1779, 2453],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 515,
+			"l": "Constitutional amendments",
+			"bt": [517],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 516,
+			"l": "Constitutional convention materials",
+			"bt": [1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131584
+		},
+		{
+			"i": 517,
+			"l": "Constitutions",
+			"bt": [1137, 1272],
+			"nt": [515, 1492],
+			"d": 1,
+			"n": 2,
+			"f": 2228738
+		},
+		{
+			"i": 518,
+			"l": "Contemporary Christian music",
+			"bt": [994],
+			"nt": [411],
+			"d": 4,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 519,
+			"l": "Continuing education materials",
+			"bt": [545],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 520,
+			"l": "Contracts",
+			"bt": [1283],
+			"nt": [
+				423,
+				453,
+				616,
+				1226
+			],
+			"d": 3,
+			"n": 4,
+			"f": 2228736
+		},
+		{
+			"i": 521,
+			"l": "Contrafacta",
+			"bt": [2243],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 522,
+			"l": "Controlled vocabularies",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 523,
+			"l": "Conversion tables",
+			"bt": [2357],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 524,
+			"l": "Cookbooks",
+			"bt": [1142],
+			"nt": [482, 1323],
+			"d": 1,
+			"n": 2,
+			"f": 4194304
+		},
+		{
+			"i": 525,
+			"l": "Cool jazz",
+			"bt": [1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 526,
+			"l": "Cooperative agreements",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 527,
+			"l": "Cootie catchers",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 528,
+			"l": "Coplas (Music)",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 529,
+			"l": "Coronation music",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 530,
+			"l": "Corpus Christi Festival music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 531,
+			"l": "Correspondence",
+			"bt": [654, 1967],
+			"nt": [
+				306,
+				1459,
+				1721
+			],
+			"d": 2,
+			"n": 7,
+			"f": 2097154
+		},
+		{
+			"i": 532,
+			"l": "Corridos (Music)",
+			"bt": [180, 904],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 533,
+			"l": "Cosaques (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 534,
+			"l": "Cotillions (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 535,
+			"l": "Counterfactual histories",
+			"bt": [557, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2101250
+		},
+		{
+			"i": 536,
+			"l": "Counting-out rhymes",
+			"bt": [1611],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 537,
+			"l": "Country gospel music",
+			"bt": [539, 994],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 538,
+			"l": "Country lyrics",
+			"bt": [1795],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 539,
+			"l": "Country music",
+			"bt": [1794],
+			"nt": [
+				62,
+				260,
+				537,
+				541,
+				555,
+				1064,
+				1787,
+				2037,
+				2622,
+				2656
+			],
+			"d": 2,
+			"n": 11,
+			"f": 131088
+		},
+		{
+			"i": 540,
+			"l": "Country music radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 541,
+			"l": "Country rock music",
+			"bt": [539, 2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 542,
+			"l": "Country-dances (Music)",
+			"bt": [591],
+			"nt": [718, 1494],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 543,
+			"l": "Courantes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 544,
+			"l": "Course catalogs",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 545,
+			"l": "Course materials",
+			"bt": [751, 1142],
+			"nt": [519],
+			"d": 1,
+			"n": 1,
+			"f": 4194306
+		},
+		{
+			"i": 546,
+			"l": "Court dances",
+			"bt": [587],
+			"nt": [
+				198,
+				292,
+				1476,
+				2019
+			],
+			"d": 1,
+			"n": 4,
+			"f": 0
+		},
+		{
+			"i": 547,
+			"l": "Court dances (Music)",
+			"bt": [591],
+			"nt": [199],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 548,
+			"l": "Court decisions and opinions",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 549,
+			"l": "Court rules",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 550,
+			"l": "Courtroom art",
+			"bt": [690, 1272],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131618
+		},
+		{
+			"i": 551,
+			"l": "Coutumes",
+			"bt": [578],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 552,
+			"l": "Cover versions",
+			"bt": [1794, 2259],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132114
+		},
+		{
+			"i": 553,
+			"l": "Cowboy poetry",
+			"bt": [901],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 554,
+			"l": "Cowboy songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 555,
+			"l": "Cowpunk music",
+			"bt": [539, 1879],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 556,
+			"l": "Cozy mysteries",
+			"bt": [622],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 1048588
+		},
+		{
+			"i": 557,
+			"l": "Creative nonfiction",
+			"bt": [],
+			"nt": [
+				244,
+				535,
+				562,
+				636,
+				776,
+				888,
+				1592,
+				1722,
+				2291,
+				2505,
+				2519,
+				2521
+			],
+			"d": 0,
+			"n": 32,
+			"f": 4097
+		},
+		{
+			"i": 558,
+			"l": "Credit titles",
+			"bt": [
+				1137,
+				1516,
+				2419,
+				2568
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 559,
+			"l": "Creeds",
+			"bt": [1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 560,
+			"l": "Cremation volumes",
+			"bt": [475],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 561,
+			"l": "Crime films",
+			"bt": [844],
+			"nt": [
+				623,
+				857,
+				946,
+				1204,
+				1774,
+				1828
+			],
+			"d": 3,
+			"n": 6,
+			"f": 131168
+		},
+		{
+			"i": 562,
+			"l": "Cronicas",
+			"bt": [557, 2169],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 4110
+		},
+		{
+			"i": 563,
+			"l": "Cross-cultural studies",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 564,
+			"l": "Crossword puzzles",
+			"bt": [2639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 565,
+			"l": "Cruise books",
+			"bt": [475, 1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 566,
+			"l": "Crunk (Music)",
+			"bt": [1953],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 567,
+			"l": "Crust (Music)",
+			"bt": [807, 1034],
+			"nt": [],
+			"d": 6,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 568,
+			"l": "Cryptograms",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 569,
+			"l": "Cryptologic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 570,
+			"l": "Csárdás (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 571,
+			"l": "Cuarteto (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 572,
+			"l": "Cue sheets (Music)",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 573,
+			"l": "Cultural television programs",
+			"bt": [2419],
+			"nt": [596],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 574,
+			"l": "Cumbia (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 575,
+			"l": "Cumulative rhymes",
+			"bt": [1611],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 576,
+			"l": "Cumulative songs",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 577,
+			"l": "Cumulative tales",
+			"bt": [905],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 578,
+			"l": "Customary laws",
+			"bt": [1137, 1272],
+			"nt": [
+				551,
+				579,
+				1964
+			],
+			"d": 1,
+			"n": 3,
+			"f": 2228738
+		},
+		{
+			"i": 579,
+			"l": "Custumals",
+			"bt": [578],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 580,
+			"l": "Cut-ups (Literature)",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 581,
+			"l": "Cutout animation films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 582,
+			"l": "Cyberpunk comics",
+			"bt": [2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 583,
+			"l": "Cyberpunk fiction",
+			"bt": [2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 584,
+			"l": "Cyberpunk films",
+			"bt": [2131],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 585,
+			"l": "Cycling maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 586,
+			"l": "Dadaist films",
+			"bt": [803],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 587,
+			"l": "Dance",
+			"bt": [],
+			"nt": [
+				187,
+				365,
+				497,
+				546,
+				595,
+				598,
+				800,
+				896,
+				1118,
+				2075,
+				2369
+			],
+			"d": 0,
+			"n": 22,
+			"f": 1
+		},
+		{
+			"i": 588,
+			"l": "Dance accompaniment music",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 589,
+			"l": "Dance drama",
+			"bt": [684],
+			"nt": [
+				196,
+				315,
+				1218,
+				1228,
+				1245,
+				1254,
+				1257,
+				1379,
+				2073,
+				2097,
+				2473,
+				2651
+			],
+			"d": 2,
+			"n": 12,
+			"f": 32776
+		},
+		{
+			"i": 590,
+			"l": "Dance films",
+			"bt": [1516],
+			"nt": [182],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 591,
+			"l": "Dance music",
+			"bt": [930],
+			"nt": [
+				50,
+				55,
+				172,
+				175,
+				185,
+				188,
+				195,
+				213,
+				214,
+				270,
+				271,
+				272,
+				283,
+				287,
+				293,
+				301,
+				302,
+				316,
+				324,
+				326,
+				345,
+				367,
+				369,
+				371,
+				372,
+				375,
+				405,
+				425,
+				446,
+				533,
+				534,
+				542,
+				543,
+				547,
+				570,
+				571,
+				588,
+				597,
+				601,
+				652,
+				729,
+				777,
+				820,
+				894,
+				895,
+				912,
+				916,
+				929,
+				935,
+				940,
+				942,
+				943,
+				951,
+				1017,
+				1019,
+				1020,
+				1046,
+				1066,
+				1069,
+				1083,
+				1085,
+				1172,
+				1182,
+				1184,
+				1190,
+				1191,
+				1192,
+				1234,
+				1236,
+				1241,
+				1242,
+				1358,
+				1383,
+				1398,
+				1399,
+				1414,
+				1419,
+				1448,
+				1467,
+				1477,
+				1489,
+				1509,
+				1511,
+				1556,
+				1557,
+				1614,
+				1651,
+				1687,
+				1688,
+				1690,
+				1692,
+				1713,
+				1788,
+				1789,
+				1790,
+				1803,
+				1891,
+				1898,
+				1904,
+				1950,
+				1971,
+				1972,
+				1992,
+				1998,
+				2020,
+				2066,
+				2086,
+				2087,
+				2089,
+				2101,
+				2102,
+				2176,
+				2224,
+				2241,
+				2262,
+				2298,
+				2350,
+				2365,
+				2366,
+				2370,
+				2372,
+				2374,
+				2458,
+				2523,
+				2527,
+				2530,
+				2589,
+				2593,
+				2622,
+				2665,
+				2676,
+				2680
+			],
+			"d": 2,
+			"n": 157,
+			"f": 131088
+		},
+		{
+			"i": 592,
+			"l": "Dance posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 593,
+			"l": "Dance programs",
+			"bt": [1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 594,
+			"l": "Dance reviews",
+			"bt": [2010],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 595,
+			"l": "Dance scores",
+			"bt": [587, 1599],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 596,
+			"l": "Dance television programs",
+			"bt": [573],
+			"nt": [183],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 597,
+			"l": "Dancehall (Music)",
+			"bt": [591, 1975],
+			"nt": [1976],
+			"d": 3,
+			"n": 2,
+			"f": 131090
+		},
+		{
+			"i": 598,
+			"l": "Dances without music",
+			"bt": [587],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 599,
+			"l": "Dangdut",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 600,
+			"l": "Dansi (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 601,
+			"l": "Danzones (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 602,
+			"l": "Dark ambient (Music)",
+			"bt": [71, 1132],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 603,
+			"l": "Dark comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 604,
+			"l": "Dark comedy television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 605,
+			"l": "Darkwave (Music)",
+			"bt": [998, 1132],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 606,
+			"l": "Dastgāhs",
+			"bt": [125],
+			"nt": [
+				426,
+				1760,
+				1998,
+				2376
+			],
+			"d": 2,
+			"n": 4,
+			"f": 131088
+		},
+		{
+			"i": 607,
+			"l": "Data dictionaries",
+			"bt": [1029],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291456
+		},
+		{
+			"i": 608,
+			"l": "Data sets",
+			"bt": [1137],
+			"nt": [2256, 2434],
+			"d": 1,
+			"n": 3,
+			"f": 2097152
+		},
+		{
+			"i": 609,
+			"l": "Databases",
+			"bt": [1137],
+			"nt": [928, 964],
+			"d": 1,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 610,
+			"l": "Death metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 611,
+			"l": "Death registers",
+			"bt": [1978],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 612,
+			"l": "Deathrock (Music)",
+			"bt": [1879],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 613,
+			"l": "Debate poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 614,
+			"l": "Debates",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 615,
+			"l": "Decimas",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 616,
+			"l": "Deeds",
+			"bt": [520],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 617,
+			"l": "Demo recordings",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 618,
+			"l": "Demographic surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 619,
+			"l": "Derivative works",
+			"bt": [],
+			"nt": [
+				4,
+				6,
+				25,
+				122,
+				736,
+				793,
+				810,
+				859,
+				1147,
+				1270,
+				1647,
+				1676,
+				1767,
+				2007,
+				2424,
+				2490,
+				2500
+			],
+			"d": 0,
+			"n": 42,
+			"f": 1
+		},
+		{
+			"i": 620,
+			"l": "Descorts",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 621,
+			"l": "Detective and mystery comics",
+			"bt": [463],
+			"nt": [1582],
+			"d": 3,
+			"n": 1,
+			"f": 8232
+		},
+		{
+			"i": 622,
+			"l": "Detective and mystery fiction",
+			"bt": [843],
+			"nt": [
+				434,
+				556,
+				909,
+				1583
+			],
+			"d": 2,
+			"n": 4,
+			"f": 1048588
+		},
+		{
+			"i": 623,
+			"l": "Detective and mystery films",
+			"bt": [561],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 624,
+			"l": "Detective and mystery plays",
+			"bt": [684],
+			"nt": [1584],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 625,
+			"l": "Detective and mystery radio programs",
+			"bt": [1915],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 626,
+			"l": "Detective and mystery television programs",
+			"bt": [2404],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 627,
+			"l": "Devotional literature",
+			"bt": [1142, 1988],
+			"nt": [
+				1434,
+				1862,
+				2055
+			],
+			"d": 1,
+			"n": 3,
+			"f": 4196354
+		},
+		{
+			"i": 628,
+			"l": "Devotional poetry",
+			"bt": [1989],
+			"nt": [1417],
+			"d": 3,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 629,
+			"l": "Dhrupad",
+			"bt": [1047, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 630,
+			"l": "Dhuns",
+			"bt": [1047],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 631,
+			"l": "Dialect drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 632,
+			"l": "Dialect fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 633,
+			"l": "Dialect poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 634,
+			"l": "Dialogues (Literature)",
+			"bt": [1326],
+			"nt": [699],
+			"d": 1,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 635,
+			"l": "Dialogues (Music)",
+			"bt": [125, 686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 636,
+			"l": "Diaries",
+			"bt": [557, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2101250
+		},
+		{
+			"i": 637,
+			"l": "Diary fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 638,
+			"l": "Dictation exercises",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 639,
+			"l": "Dictionaries",
+			"bt": [1973],
+			"nt": [
+				2,
+				14,
+				235,
+				787,
+				1522,
+				1748,
+				2009,
+				2331,
+				2447
+			],
+			"d": 2,
+			"n": 9,
+			"f": 2097152
+		},
+		{
+			"i": 640,
+			"l": "Didactic drama",
+			"bt": [684, 1142],
+			"nt": [1507],
+			"d": 2,
+			"n": 1,
+			"f": 4227082
+		},
+		{
+			"i": 641,
+			"l": "Didactic fiction",
+			"bt": [843, 1142],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194318
+		},
+		{
+			"i": 642,
+			"l": "Didactic poetry",
+			"bt": [1142, 1771],
+			"nt": [970],
+			"d": 2,
+			"n": 1,
+			"f": 4210698
+		},
+		{
+			"i": 643,
+			"l": "Digital art",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 644,
+			"l": "Digital elevation models",
+			"bt": [1980],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097440
+		},
+		{
+			"i": 645,
+			"l": "Digital maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 646,
+			"l": "Dikir barat",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 647,
+			"l": "Directories",
+			"bt": [1973],
+			"nt": [433, 2385],
+			"d": 2,
+			"n": 3,
+			"f": 2097152
+		},
+		{
+			"i": 648,
+			"l": "Dirges (Music)",
+			"bt": [931, 2246],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 649,
+			"l": "Disaster films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 650,
+			"l": "Disaster television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 651,
+			"l": "Disc jockey radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 652,
+			"l": "Disco (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 653,
+			"l": "Discographies",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 654,
+			"l": "Discursive works",
+			"bt": [],
+			"nt": [
+				124,
+				477,
+				513,
+				531,
+				614,
+				720,
+				855,
+				1039,
+				1163,
+				1269,
+				1277,
+				1305,
+				1324,
+				1325,
+				1397,
+				1449,
+				1599,
+				1616,
+				1628,
+				1659,
+				1773,
+				1821,
+				1913,
+				1935,
+				1941,
+				1983,
+				2121,
+				2170,
+				2268,
+				2269,
+				2273,
+				2274,
+				2292,
+				2355,
+				2400,
+				2405,
+				2429
+			],
+			"d": 0,
+			"n": 76,
+			"f": 1
+		},
+		{
+			"i": 655,
+			"l": "Discussion plays",
+			"bt": [1831],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 656,
+			"l": "Divine Office (Music)",
+			"bt": [791, 2076],
+			"nt": [
+				489,
+				1268,
+				2564
+			],
+			"d": 3,
+			"n": 3,
+			"f": 131090
+		},
+		{
+			"i": 657,
+			"l": "Dixieland music",
+			"bt": [1178],
+			"nt": [2480],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 658,
+			"l": "Dockets",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 659,
+			"l": "Doctrine and Covenants stories",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 660,
+			"l": "Documentary comics",
+			"bt": [1590],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 661,
+			"l": "Documentary films",
+			"bt": [1591],
+			"nt": [
+				428,
+				722,
+				783,
+				1058,
+				2506
+			],
+			"d": 3,
+			"n": 9,
+			"f": 131168
+		},
+		{
+			"i": 662,
+			"l": "Documentary photographs",
+			"bt": [1137, 1736],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 663,
+			"l": "Documentary poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 664,
+			"l": "Documentary radio programs",
+			"bt": [1593],
+			"nt": [2507],
+			"d": 3,
+			"n": 1,
+			"f": 132224
+		},
+		{
+			"i": 665,
+			"l": "Documentary television programs",
+			"bt": [1594],
+			"nt": [
+				725,
+				785,
+				1059,
+				2508
+			],
+			"d": 3,
+			"n": 7,
+			"f": 131168
+		},
+		{
+			"i": 666,
+			"l": "Documentary-style films",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 667,
+			"l": "Documentary-style television programs",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 668,
+			"l": "Dodoitsu (Songs)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 669,
+			"l": "Doggerel",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 670,
+			"l": "Domestic comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 671,
+			"l": "Domestic comedy television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 672,
+			"l": "Domestic comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 673,
+			"l": "Domestic drama",
+			"bt": [684],
+			"nt": [689, 2177],
+			"d": 2,
+			"n": 2,
+			"f": 32776
+		},
+		{
+			"i": 674,
+			"l": "Domestic drama (Motion pictures)",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 675,
+			"l": "Domestic drama (Television programs)",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 676,
+			"l": "Domestic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 677,
+			"l": "Domestic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 678,
+			"l": "Dondang sayang",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 679,
+			"l": "Doo-wop",
+			"bt": [2016],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 680,
+			"l": "Doom metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 681,
+			"l": "Double dactyls",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 682,
+			"l": "Double-crostics",
+			"bt": [16],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 683,
+			"l": "Drag television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 684,
+			"l": "Drama",
+			"bt": [1326],
+			"nt": [
+				17,
+				21,
+				64,
+				236,
+				247,
+				417,
+				447,
+				460,
+				469,
+				496,
+				589,
+				624,
+				631,
+				640,
+				673,
+				687,
+				699,
+				746,
+				762,
+				769,
+				801,
+				826,
+				836,
+				897,
+				953,
+				1053,
+				1074,
+				1152,
+				1210,
+				1216,
+				1244,
+				1255,
+				1279,
+				1297,
+				1308,
+				1309,
+				1312,
+				1337,
+				1339,
+				1362,
+				1375,
+				1411,
+				1426,
+				1437,
+				1445,
+				1450,
+				1468,
+				1495,
+				1497,
+				1502,
+				1550,
+				1613,
+				1627,
+				1670,
+				1684,
+				1700,
+				1743,
+				1780,
+				1831,
+				1849,
+				1882,
+				1927,
+				1984,
+				2050,
+				2133,
+				2145,
+				2285,
+				2340,
+				2367,
+				2415,
+				2443,
+				2451,
+				2485,
+				2486,
+				2492,
+				2544,
+				2559,
+				2560,
+				2596,
+				2620
+			],
+			"d": 1,
+			"n": 158,
+			"f": 32776
+		},
+		{
+			"i": 685,
+			"l": "Dramatic monologues (Poetry)",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 686,
+			"l": "Dramatic music",
+			"bt": [1530],
+			"nt": [
+				176,
+				185,
+				190,
+				195,
+				366,
+				396,
+				512,
+				635,
+				743,
+				1050,
+				1106,
+				1107,
+				1122,
+				1208,
+				1368,
+				1412,
+				1439,
+				1489,
+				1498,
+				1514,
+				1533,
+				1541,
+				1635,
+				1639,
+				1650,
+				1661,
+				1698,
+				1755,
+				1955,
+				2012,
+				2166,
+				2606,
+				2666
+			],
+			"d": 1,
+			"n": 67,
+			"f": 131088
+		},
+		{
+			"i": 687,
+			"l": "Drames à clef",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 688,
+			"l": "Drames à clef (Television programs)",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 689,
+			"l": "Drawing-room drama",
+			"bt": [673],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 690,
+			"l": "Drawings",
+			"bt": [2583],
+			"nt": [
+				117,
+				351,
+				550,
+				967,
+				1697,
+				2317,
+				2604
+			],
+			"d": 1,
+			"n": 8,
+			"f": 32
+		},
+		{
+			"i": 691,
+			"l": "Drinking songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 692,
+			"l": "Drolls",
+			"bt": [462, 833],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 693,
+			"l": "Drone metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 694,
+			"l": "Drum circles",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 695,
+			"l": "Dub (Music)",
+			"bt": [1975],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 696,
+			"l": "Dubstep (Music)",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 697,
+			"l": "Dumky (Art music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 698,
+			"l": "Dumy (Music)",
+			"bt": [756, 904],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 699,
+			"l": "Duologues",
+			"bt": [634, 684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 700,
+			"l": "Dystopian comics",
+			"bt": [2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 701,
+			"l": "Dystopian fiction",
+			"bt": [2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 702,
+			"l": "Dystopian films",
+			"bt": [2131],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 703,
+			"l": "Dystopian plays",
+			"bt": [2133],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 704,
+			"l": "Dystopian television programs",
+			"bt": [2136],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 705,
+			"l": "Décimas (Music)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 706,
+			"l": "Dādrās",
+			"bt": [1047, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 707,
+			"l": "Dāphā (Music)",
+			"bt": [2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 708,
+			"l": "Early maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 709,
+			"l": "Early works",
+			"bt": [],
+			"nt": [1393],
+			"d": 0,
+			"n": 1,
+			"f": 1
+		},
+		{
+			"i": 710,
+			"l": "Easter fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 711,
+			"l": "Easter music",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 712,
+			"l": "Easter plays",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 713,
+			"l": "Easter poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 714,
+			"l": "Easter sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 715,
+			"l": "Echo verse",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 716,
+			"l": "Ecofiction",
+			"bt": [1561],
+			"nt": [444],
+			"d": 3,
+			"n": 1,
+			"f": 12
+		},
+		{
+			"i": 717,
+			"l": "Ecopoetry",
+			"bt": [1563],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 718,
+			"l": "Ecossaises (Music)",
+			"bt": [542],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 719,
+			"l": "Editorial cartoons",
+			"bt": [350],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 720,
+			"l": "Editorials",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 721,
+			"l": "Educational comics",
+			"bt": [1142, 1590],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 4202538
+		},
+		{
+			"i": 722,
+			"l": "Educational films",
+			"bt": [661, 1142],
+			"nt": [2137, 2227],
+			"d": 4,
+			"n": 4,
+			"f": 4325474
+		},
+		{
+			"i": 723,
+			"l": "Educational games",
+			"bt": [1142, 1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194306
+		},
+		{
+			"i": 724,
+			"l": "Educational radio programs",
+			"bt": [1142, 1930],
+			"nt": [2138],
+			"d": 2,
+			"n": 1,
+			"f": 4326530
+		},
+		{
+			"i": 725,
+			"l": "Educational television programs",
+			"bt": [665, 1142],
+			"nt": [2139],
+			"d": 4,
+			"n": 3,
+			"f": 4325474
+		},
+		{
+			"i": 726,
+			"l": "Eight-pagers (Comic books)",
+			"bt": [1088, 1799],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 727,
+			"l": "Ekphrastic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 728,
+			"l": "Electro (Music)",
+			"bt": [
+				729,
+				933,
+				1048
+			],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 729,
+			"l": "Electronic dance music",
+			"bt": [591, 730],
+			"nt": [
+				696,
+				728,
+				936,
+				974,
+				1080,
+				1130,
+				1150,
+				1200,
+				2381,
+				2488,
+				2515,
+				2531
+			],
+			"d": 3,
+			"n": 14,
+			"f": 131090
+		},
+		{
+			"i": 730,
+			"l": "Electronica (Music)",
+			"bt": [1794],
+			"nt": [
+				71,
+				397,
+				729,
+				1610,
+				2354,
+				2552
+			],
+			"d": 2,
+			"n": 21,
+			"f": 131088
+		},
+		{
+			"i": 731,
+			"l": "Elegies",
+			"bt": [],
+			"nt": [1400, 1701],
+			"d": 0,
+			"n": 2,
+			"f": 1
+		},
+		{
+			"i": 732,
+			"l": "Elegies (Music)",
+			"bt": [1443],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 733,
+			"l": "Elegies (Poetry)",
+			"bt": [475, 1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 734,
+			"l": "Emblem books",
+			"bt": [1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 735,
+			"l": "Emo (Music)",
+			"bt": [1034],
+			"nt": [],
+			"d": 6,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 736,
+			"l": "Emulations",
+			"bt": [619],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 737,
+			"l": "Encyclopedias",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 738,
+			"l": "Englyns",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 739,
+			"l": "Engravings",
+			"bt": [1149],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 740,
+			"l": "Enka",
+			"bt": [1794, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 741,
+			"l": "Ensaladas",
+			"bt": [1683, 1899],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 742,
+			"l": "Entertainment news programs",
+			"bt": [2412],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228320
+		},
+		{
+			"i": 743,
+			"l": "Entremés (Music)",
+			"bt": [686, 1153],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 744,
+			"l": "Enumerative songs",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 745,
+			"l": "Environmental comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 746,
+			"l": "Environmental drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 747,
+			"l": "Environmental films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 748,
+			"l": "Environmental impact statements",
+			"bt": [2380],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 749,
+			"l": "Environmental posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 750,
+			"l": "Environmental television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 751,
+			"l": "Ephemera",
+			"bt": [],
+			"nt": [
+				113,
+				127,
+				255,
+				297,
+				303,
+				313,
+				349,
+				380,
+				445,
+				508,
+				545,
+				792,
+				889,
+				1010,
+				1189,
+				1329,
+				1447,
+				1574,
+				1637,
+				1657,
+				1765,
+				1809,
+				1822,
+				1838,
+				1965,
+				2090,
+				2141,
+				2303,
+				2481,
+				2483,
+				2668
+			],
+			"d": 0,
+			"n": 45,
+			"f": 1
+		},
+		{
+			"i": 752,
+			"l": "Ephemerides",
+			"bt": [347, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097410
+		},
+		{
+			"i": 753,
+			"l": "Epic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 754,
+			"l": "Epic films",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 755,
+			"l": "Epic poetry",
+			"bt": [1558],
+			"nt": [378, 1214],
+			"d": 3,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 756,
+			"l": "Epic songs",
+			"bt": [1559],
+			"nt": [698],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 757,
+			"l": "Epic television programs",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 758,
+			"l": "Epicedia",
+			"bt": [1619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 759,
+			"l": "Epicedia (Music)",
+			"bt": [931, 2246],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 760,
+			"l": "Epigrams",
+			"bt": [2113],
+			"nt": [1823],
+			"d": 3,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 761,
+			"l": "Epiphany music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 762,
+			"l": "Episodic plays",
+			"bt": [684],
+			"nt": [2302],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 763,
+			"l": "Epistolary fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 764,
+			"l": "Epistolary poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 765,
+			"l": "Epitaphs",
+			"bt": [475],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 766,
+			"l": "Epithalamia",
+			"bt": [475, 1619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 767,
+			"l": "Erasure poetry",
+			"bt": [914],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 768,
+			"l": "Erotic comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 769,
+			"l": "Erotic drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 770,
+			"l": "Erotic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 771,
+			"l": "Erotic films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 772,
+			"l": "Erotic periodicals",
+			"bt": [1719],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 773,
+			"l": "Erotic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 774,
+			"l": "Erotic songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 775,
+			"l": "Erotic television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 776,
+			"l": "Essays",
+			"bt": [557, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2101250
+		},
+		{
+			"i": 777,
+			"l": "Estampies (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 778,
+			"l": "Etchings",
+			"bt": [1149],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 779,
+			"l": "Ethnic films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 780,
+			"l": "Ethnic radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 781,
+			"l": "Ethnic television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 782,
+			"l": "Ethnographic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 783,
+			"l": "Ethnographic films",
+			"bt": [661, 786],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 784,
+			"l": "Ethnographic maps",
+			"bt": [786, 1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228514
+		},
+		{
+			"i": 785,
+			"l": "Ethnographic television programs",
+			"bt": [665, 786],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 786,
+			"l": "Ethnographies",
+			"bt": [1137],
+			"nt": [
+				783,
+				784,
+				785
+			],
+			"d": 1,
+			"n": 3,
+			"f": 2097152
+		},
+		{
+			"i": 787,
+			"l": "Etymological dictionaries",
+			"bt": [639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 788,
+			"l": "Eulogies",
+			"bt": [475, 1618],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 789,
+			"l": "Evangelism plays",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 790,
+			"l": "Evening service music",
+			"bt": [791, 2076],
+			"nt": [2564],
+			"d": 3,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 791,
+			"l": "Event music",
+			"bt": [930],
+			"nt": [
+				28,
+				52,
+				131,
+				215,
+				325,
+				343,
+				415,
+				480,
+				529,
+				530,
+				656,
+				694,
+				711,
+				761,
+				790,
+				839,
+				851,
+				931,
+				1031,
+				1044,
+				1233,
+				1241,
+				1294,
+				1413,
+				1453,
+				1510,
+				1529,
+				1573,
+				1695,
+				1716,
+				1725,
+				1753,
+				1815,
+				1853,
+				1884,
+				1951,
+				1974,
+				2074,
+				2199,
+				2513,
+				2563,
+				2579,
+				2610
+			],
+			"d": 2,
+			"n": 68,
+			"f": 131088
+		},
+		{
+			"i": 792,
+			"l": "Examinations",
+			"bt": [751, 1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194306
+		},
+		{
+			"i": 793,
+			"l": "Excerpts",
+			"bt": [619],
+			"nt": [
+				445,
+				854,
+				856,
+				1648,
+				1677,
+				1718,
+				1905,
+				1926,
+				1928,
+				2416,
+				2417
+			],
+			"d": 1,
+			"n": 12,
+			"f": 0
+		},
+		{
+			"i": 794,
+			"l": "Executive orders",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 795,
+			"l": "Exempla",
+			"bt": [1142, 1326],
+			"nt": [808, 1668],
+			"d": 1,
+			"n": 3,
+			"f": 4194314
+		},
+		{
+			"i": 796,
+			"l": "Exercise music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 797,
+			"l": "Exhibition catalogs",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 798,
+			"l": "Exhibition posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 799,
+			"l": "Experimental comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 800,
+			"l": "Experimental dances",
+			"bt": [587],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 801,
+			"l": "Experimental drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 802,
+			"l": "Experimental fiction",
+			"bt": [843],
+			"nt": [103],
+			"d": 2,
+			"n": 1,
+			"f": 12
+		},
+		{
+			"i": 803,
+			"l": "Experimental films",
+			"bt": [1516],
+			"nt": [
+				5,
+				586,
+				1357,
+				2324,
+				2343
+			],
+			"d": 2,
+			"n": 5,
+			"f": 131168
+		},
+		{
+			"i": 804,
+			"l": "Experimental music",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 805,
+			"l": "Experimental poetry",
+			"bt": [1771],
+			"nt": [494, 506],
+			"d": 2,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 806,
+			"l": "Exploitation films",
+			"bt": [1516],
+			"nt": [2223],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 807,
+			"l": "Extreme metal (Music)",
+			"bt": [1040],
+			"nt": [567],
+			"d": 4,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 808,
+			"l": "Fables",
+			"bt": [795, 905],
+			"nt": [1658],
+			"d": 3,
+			"n": 1,
+			"f": 4194318
+		},
+		{
+			"i": 809,
+			"l": "Fabliaux",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 810,
+			"l": "Facsimiles",
+			"bt": [619],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 811,
+			"l": "Fados",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 812,
+			"l": "Fairy tale comics",
+			"bt": [825],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 813,
+			"l": "Fairy tale plays",
+			"bt": [826],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 814,
+			"l": "Fairy tales",
+			"bt": [905],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 815,
+			"l": "Fakebooks (Music)",
+			"bt": [2142],
+			"nt": [1275],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 816,
+			"l": "Falsobordone",
+			"bt": [2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 817,
+			"l": "Family histories",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 818,
+			"l": "Fan fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 819,
+			"l": "Fan films",
+			"bt": [70],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 820,
+			"l": "Fandangos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 821,
+			"l": "Fanfares",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 822,
+			"l": "Fantasias (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 823,
+			"l": "Fantasy comedies (Motion pictures)",
+			"bt": [459, 828],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 824,
+			"l": "Fantasy comedies (Television programs)",
+			"bt": [831, 2399],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 825,
+			"l": "Fantasy comics",
+			"bt": [463],
+			"nt": [812, 1170],
+			"d": 3,
+			"n": 2,
+			"f": 8232
+		},
+		{
+			"i": 826,
+			"l": "Fantasy drama",
+			"bt": [684],
+			"nt": [813],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 827,
+			"l": "Fantasy fiction",
+			"bt": [843],
+			"nt": [
+				1328,
+				1804,
+				2338
+			],
+			"d": 2,
+			"n": 3,
+			"f": 524300
+		},
+		{
+			"i": 828,
+			"l": "Fantasy films",
+			"bt": [844],
+			"nt": [
+				82,
+				823,
+				1168,
+				2309,
+				2339
+			],
+			"d": 3,
+			"n": 5,
+			"f": 131168
+		},
+		{
+			"i": 829,
+			"l": "Fantasy poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 830,
+			"l": "Fantasy radio programs",
+			"bt": [845],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 831,
+			"l": "Fantasy television programs",
+			"bt": [846],
+			"nt": [
+				824,
+				1169,
+				2341
+			],
+			"d": 3,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 832,
+			"l": "FAQs",
+			"bt": [1142, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 6291458
+		},
+		{
+			"i": 833,
+			"l": "Farces",
+			"bt": [460],
+			"nt": [
+				102,
+				139,
+				692,
+				2216
+			],
+			"d": 3,
+			"n": 4,
+			"f": 32776
+		},
+		{
+			"i": 834,
+			"l": "Farewell speeches",
+			"bt": [1618],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 835,
+			"l": "Fashion competition shows (Television programs)",
+			"bt": [1961],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 836,
+			"l": "Fastnachtsspiele",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 837,
+			"l": "Fatras",
+			"bt": [1597],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 838,
+			"l": "Fatwas",
+			"bt": [1272, 1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 133634
+		},
+		{
+			"i": 839,
+			"l": "Feast of the Transfiguration music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 840,
+			"l": "Feature films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 841,
+			"l": "Festival programs",
+			"bt": [1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 842,
+			"l": "Festschriften",
+			"bt": [475],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 843,
+			"l": "Fiction",
+			"bt": [1326],
+			"nt": [
+				19,
+				36,
+				65,
+				84,
+				224,
+				237,
+				251,
+				288,
+				322,
+				399,
+				413,
+				470,
+				510,
+				569,
+				622,
+				632,
+				637,
+				641,
+				676,
+				710,
+				753,
+				763,
+				770,
+				782,
+				802,
+				818,
+				827,
+				847,
+				881,
+				905,
+				917,
+				945,
+				996,
+				1054,
+				1072,
+				1089,
+				1094,
+				1104,
+				1280,
+				1311,
+				1373,
+				1402,
+				1416,
+				1427,
+				1460,
+				1503,
+				1548,
+				1561,
+				1592,
+				1595,
+				1603,
+				1604,
+				1605,
+				1671,
+				1694,
+				1702,
+				1729,
+				1744,
+				1778,
+				1800,
+				1827,
+				1842,
+				1866,
+				1894,
+				1985,
+				2023,
+				2042,
+				2047,
+				2094,
+				2115,
+				2123,
+				2129,
+				2149,
+				2160,
+				2169,
+				2186,
+				2229,
+				2283,
+				2294,
+				2316,
+				2345,
+				2444,
+				2452,
+				2540,
+				2543,
+				2597,
+				2618
+			],
+			"d": 1,
+			"n": 148,
+			"f": 12
+		},
+		{
+			"i": 844,
+			"l": "Fiction films",
+			"bt": [1516],
+			"nt": [
+				66,
+				561,
+				666,
+				674,
+				754,
+				828,
+				876,
+				1036,
+				1073,
+				1193,
+				1438,
+				1506,
+				1525,
+				1779,
+				2131,
+				2634
+			],
+			"d": 2,
+			"n": 36,
+			"f": 131168
+		},
+		{
+			"i": 845,
+			"l": "Fiction radio programs",
+			"bt": [1930],
+			"nt": [
+				830,
+				1076,
+				2135
+			],
+			"d": 2,
+			"n": 3,
+			"f": 132224
+		},
+		{
+			"i": 846,
+			"l": "Fiction television programs",
+			"bt": [2419],
+			"nt": [
+				67,
+				667,
+				675,
+				688,
+				757,
+				831,
+				1037,
+				1194,
+				1785,
+				2136,
+				2404,
+				2408,
+				2635
+			],
+			"d": 2,
+			"n": 25,
+			"f": 131168
+		},
+		{
+			"i": 847,
+			"l": "Fictional autobiographies",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 848,
+			"l": "Field guides",
+			"bt": [1029, 1113],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291490
+		},
+		{
+			"i": 849,
+			"l": "Field notes",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 850,
+			"l": "Field recordings",
+			"bt": [2259, 2568],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1058
+		},
+		{
+			"i": 851,
+			"l": "Fight songs",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 852,
+			"l": "Filk music",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 853,
+			"l": "Film adaptations",
+			"bt": [25, 1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 854,
+			"l": "Film clips",
+			"bt": [793, 1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 855,
+			"l": "Film criticism",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 856,
+			"l": "Film excerpts",
+			"bt": [793, 1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 857,
+			"l": "Film noir",
+			"bt": [561],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 858,
+			"l": "Film posters",
+			"bt": [1810],
+			"nt": [1340],
+			"d": 3,
+			"n": 1,
+			"f": 2097184
+		},
+		{
+			"i": 859,
+			"l": "Film remakes",
+			"bt": [619, 1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 860,
+			"l": "Film serials",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 861,
+			"l": "Film soundtracks",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 862,
+			"l": "Film trailers",
+			"bt": [1516, 1847],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 863,
+			"l": "Filmed baseball games",
+			"bt": [870],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 864,
+			"l": "Filmed basketball games",
+			"bt": [870],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 865,
+			"l": "Filmed boxing matches",
+			"bt": [870],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 866,
+			"l": "Filmed burlesque acts",
+			"bt": [869],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 867,
+			"l": "Filmed football games",
+			"bt": [870],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 868,
+			"l": "Filmed parades",
+			"bt": [1591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 869,
+			"l": "Filmed performances",
+			"bt": [1591],
+			"nt": [
+				499,
+				866,
+				871
+			],
+			"d": 3,
+			"n": 4,
+			"f": 131168
+		},
+		{
+			"i": 870,
+			"l": "Filmed sports events",
+			"bt": [1591],
+			"nt": [
+				863,
+				864,
+				865,
+				867,
+				872
+			],
+			"d": 3,
+			"n": 5,
+			"f": 131168
+		},
+		{
+			"i": 871,
+			"l": "Filmed vaudeville acts",
+			"bt": [869],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 872,
+			"l": "Filmed yacht races",
+			"bt": [870],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 873,
+			"l": "Filmographies",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 874,
+			"l": "Films for hard of hearing people",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 875,
+			"l": "Films for people with visual disabilities",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 876,
+			"l": "Films à clef",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 877,
+			"l": "Finales (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 878,
+			"l": "Finding aids",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 879,
+			"l": "Fingering charts",
+			"bt": [1113, 1137],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 880,
+			"l": "Fire insurance maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 881,
+			"l": "Fishing fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 882,
+			"l": "Fishing surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 883,
+			"l": "Flag books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 884,
+			"l": "Flags",
+			"bt": [2583],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 885,
+			"l": "Flamenco dances",
+			"bt": [896],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 886,
+			"l": "Flamenco music",
+			"bt": [899],
+			"nt": [
+				2079,
+				2153,
+				2176
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 887,
+			"l": "Flash fiction",
+			"bt": [2186],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 888,
+			"l": "Flash nonfiction",
+			"bt": [557],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4096
+		},
+		{
+			"i": 889,
+			"l": "Fliers (Ephemera)",
+			"bt": [751],
+			"nt": [2594],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 890,
+			"l": "Flip books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 891,
+			"l": "Flip charts",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 892,
+			"l": "Floor plans",
+			"bt": [117, 1137],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 893,
+			"l": "Flow maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 894,
+			"l": "Folias (Music)",
+			"bt": [
+				591,
+				2246,
+				2553
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 895,
+			"l": "Folk dance music",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 896,
+			"l": "Folk dances",
+			"bt": [587],
+			"nt": [
+				292,
+				885,
+				2019
+			],
+			"d": 1,
+			"n": 3,
+			"f": 0
+		},
+		{
+			"i": 897,
+			"l": "Folk drama",
+			"bt": [684, 898],
+			"nt": [
+				196,
+				305,
+				315,
+				1218,
+				1238,
+				1245,
+				1254,
+				1257,
+				1293,
+				1306,
+				1379,
+				1526,
+				1885,
+				2097,
+				2099
+			],
+			"d": 2,
+			"n": 16,
+			"f": 32778
+		},
+		{
+			"i": 898,
+			"l": "Folk literature",
+			"bt": [1326],
+			"nt": [
+				897,
+				901,
+				905,
+				1288,
+				1553,
+				1756,
+				2472
+			],
+			"d": 1,
+			"n": 32,
+			"f": 8
+		},
+		{
+			"i": 899,
+			"l": "Folk music",
+			"bt": [1530],
+			"nt": [
+				50,
+				261,
+				311,
+				316,
+				361,
+				366,
+				512,
+				886,
+				895,
+				902,
+				904,
+				906,
+				920,
+				941,
+				1016,
+				1066,
+				1083,
+				1084,
+				1107,
+				1171,
+				1182,
+				1220,
+				1230,
+				1234,
+				1246,
+				1382,
+				1398,
+				1408,
+				1511,
+				1520,
+				1554,
+				1557,
+				1598,
+				1625,
+				1656,
+				1787,
+				1950,
+				1962,
+				2098,
+				2127,
+				2239,
+				2252,
+				2298,
+				2384,
+				2546,
+				2656
+			],
+			"d": 1,
+			"n": 92,
+			"f": 131088
+		},
+		{
+			"i": 900,
+			"l": "Folk music radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 901,
+			"l": "Folk poetry",
+			"bt": [898, 1771],
+			"nt": [
+				553,
+				1025,
+				2467
+			],
+			"d": 2,
+			"n": 3,
+			"f": 16394
+		},
+		{
+			"i": 902,
+			"l": "Folk punk music",
+			"bt": [899, 1879],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 903,
+			"l": "Folk song texts",
+			"bt": [2244],
+			"nt": [1240],
+			"d": 3,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 904,
+			"l": "Folk songs",
+			"bt": [899, 2246],
+			"nt": [
+				46,
+				222,
+				364,
+				385,
+				528,
+				532,
+				576,
+				698,
+				744,
+				811,
+				992,
+				994,
+				1176,
+				1215,
+				1239,
+				1353,
+				1491,
+				1555,
+				1650,
+				1952,
+				2067,
+				2152,
+				2175,
+				2275,
+				2368,
+				2563,
+				2572,
+				2605,
+				2658
+			],
+			"d": 2,
+			"n": 33,
+			"f": 131090
+		},
+		{
+			"i": 905,
+			"l": "Folk tales",
+			"bt": [843, 898],
+			"nt": [
+				577,
+				808,
+				814,
+				1174,
+				2541
+			],
+			"d": 2,
+			"n": 6,
+			"f": 14
+		},
+		{
+			"i": 906,
+			"l": "Folk-rock music",
+			"bt": [899, 2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 907,
+			"l": "Football films",
+			"bt": [2284],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 908,
+			"l": "Forensic crime dramas (Television programs)",
+			"bt": [2404],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 909,
+			"l": "Forensic fiction",
+			"bt": [622],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 1048588
+		},
+		{
+			"i": 910,
+			"l": "Formulae",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 911,
+			"l": "Formularies (Medicine)",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 912,
+			"l": "Forró (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 913,
+			"l": "Fotonovelas",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 914,
+			"l": "Found poetry",
+			"bt": [1771],
+			"nt": [767],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 915,
+			"l": "Foxtrots (Dance)",
+			"bt": [187],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 916,
+			"l": "Foxtrots (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 917,
+			"l": "Frame stories",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 918,
+			"l": "Frat rock music",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 919,
+			"l": "Fraternity and sorority songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 920,
+			"l": "Freak folk (Music)",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 921,
+			"l": "Free jazz",
+			"bt": [1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 922,
+			"l": "Free verse",
+			"bt": [1771],
+			"nt": [2e3],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 923,
+			"l": "Frevos",
+			"bt": [343],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 924,
+			"l": "Frottole (Music)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 925,
+			"l": "Fu",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 926,
+			"l": "Fugues",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 927,
+			"l": "Fuji (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 928,
+			"l": "Full-text databases",
+			"bt": [609],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 929,
+			"l": "Funana (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 930,
+			"l": "Functional music",
+			"bt": [1530],
+			"nt": [
+				9,
+				75,
+				173,
+				318,
+				319,
+				430,
+				491,
+				591,
+				791,
+				796,
+				1095,
+				1111,
+				1396,
+				1410,
+				1433,
+				1443,
+				1463,
+				1480,
+				1514,
+				1536,
+				1709,
+				1835,
+				1922,
+				1979,
+				2200,
+				2322,
+				2410,
+				2489,
+				2643,
+				2657
+			],
+			"d": 1,
+			"n": 268,
+			"f": 131088
+		},
+		{
+			"i": 931,
+			"l": "Funeral music",
+			"bt": [791],
+			"nt": [
+				648,
+				759,
+				2003
+			],
+			"d": 3,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 932,
+			"l": "Funeral sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 933,
+			"l": "Funk (Music)",
+			"bt": [1794],
+			"nt": [
+				728,
+				937,
+				1570
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 934,
+			"l": "Funny animal comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 935,
+			"l": "Furiants (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 936,
+			"l": "Future funk (Music)",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 937,
+			"l": "G-funk (Music)",
+			"bt": [933, 944],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 938,
+			"l": "Gabba (Music)",
+			"bt": [2381],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 939,
+			"l": "Gagaku",
+			"bt": [125],
+			"nt": [301, 2083],
+			"d": 2,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 940,
+			"l": "Gahu (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 941,
+			"l": "Gaitas (Music)",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 942,
+			"l": "Galliards (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 943,
+			"l": "Galops (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 944,
+			"l": "Gangsta rap (Music)",
+			"bt": [1953],
+			"nt": [937],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 945,
+			"l": "Gangster fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 946,
+			"l": "Gangster films",
+			"bt": [561],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 947,
+			"l": "Gangster television programs",
+			"bt": [2404],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 948,
+			"l": "Garage rock music",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 949,
+			"l": "Gatefold books",
+			"bt": [129, 2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 950,
+			"l": "Gats (Music)",
+			"bt": [1047, 1944],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 951,
+			"l": "Gavottes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 952,
+			"l": "Gay comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 953,
+			"l": "Gay drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 954,
+			"l": "Gay fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 955,
+			"l": "Gay films",
+			"bt": [1895],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 956,
+			"l": "Gay musicals",
+			"bt": [1541],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 957,
+			"l": "Gay operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 958,
+			"l": "Gay poetry",
+			"bt": [1896],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 959,
+			"l": "Gay television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 960,
+			"l": "Gazetteers",
+			"bt": [347, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097410
+		},
+		{
+			"i": 961,
+			"l": "Genderqueer comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 962,
+			"l": "Genderqueer fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 963,
+			"l": "Genealogical tables",
+			"bt": [2357],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 964,
+			"l": "Geodatabases",
+			"bt": [609, 965],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097410
+		},
+		{
+			"i": 965,
+			"l": "Geographic information systems",
+			"bt": [347, 1137],
+			"nt": [964, 971],
+			"d": 1,
+			"n": 4,
+			"f": 2097410
+		},
+		{
+			"i": 966,
+			"l": "Geologic time scales",
+			"bt": [422],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 967,
+			"l": "Geological cross-sections",
+			"bt": [
+				347,
+				690,
+				1137
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097442
+		},
+		{
+			"i": 968,
+			"l": "Geological maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 969,
+			"l": "Geological posters",
+			"bt": [1137, 1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 970,
+			"l": "Georgics",
+			"bt": [642],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 4210696
+		},
+		{
+			"i": 971,
+			"l": "Geospatial data",
+			"bt": [965],
+			"nt": [1957, 2558],
+			"d": 2,
+			"n": 2,
+			"f": 2097408
+		},
+		{
+			"i": 972,
+			"l": "Ghazals (Music)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 973,
+			"l": "Ghazals (Poetry)",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 974,
+			"l": "Ghettotech (Music)",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 975,
+			"l": "Ghost comics",
+			"bt": [1669],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 976,
+			"l": "Ghost films",
+			"bt": [1672],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 977,
+			"l": "Ghost plays",
+			"bt": [1670],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 978,
+			"l": "Ghost poetry",
+			"bt": [1673],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 979,
+			"l": "Ghost stories",
+			"bt": [1671],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 980,
+			"l": "Ghost television programs",
+			"bt": [1675],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 981,
+			"l": "Gift books",
+			"bt": [1113, 1326],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 42
+		},
+		{
+			"i": 982,
+			"l": "Giustiniane (Villanelle)",
+			"bt": [2576],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 983,
+			"l": "Glam metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 984,
+			"l": "Glam rock (Music)",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 985,
+			"l": "Glees (Music)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 986,
+			"l": "Glitch music",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 987,
+			"l": "Globes",
+			"bt": [347, 1488],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228514
+		},
+		{
+			"i": 988,
+			"l": "Glosas",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 989,
+			"l": "Glow-in-the-dark books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 990,
+			"l": "Gnomic poetry",
+			"bt": [1771, 2113],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2113546
+		},
+		{
+			"i": 991,
+			"l": "Go-go (Music)",
+			"bt": [1953],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 992,
+			"l": "Goigs",
+			"bt": [904, 1102],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 993,
+			"l": "Gores (Maps)",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 994,
+			"l": "Gospel music",
+			"bt": [
+				904,
+				1794,
+				2076
+			],
+			"nt": [518, 537],
+			"d": 3,
+			"n": 4,
+			"f": 131090
+		},
+		{
+			"i": 995,
+			"l": "Gossip radio programs",
+			"bt": [1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 996,
+			"l": "Gothic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 997,
+			"l": "Gothic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 998,
+			"l": "Gothic rock music",
+			"bt": [69],
+			"nt": [605],
+			"d": 4,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 999,
+			"l": "Graded lists",
+			"bt": [229],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1e3,
+			"l": "Graduals (Music)",
+			"bt": [1011, 1853],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1001,
+			"l": "Graduals (Service books)",
+			"bt": [2171],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 1002,
+			"l": "Graduation speeches",
+			"bt": [1618],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1003,
+			"l": "Graphic medicine (Comics)",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1004,
+			"l": "Graphic novel adaptations",
+			"bt": [464, 1005],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 1005,
+			"l": "Graphic novels",
+			"bt": [463],
+			"nt": [1004],
+			"d": 3,
+			"n": 1,
+			"f": 8232
+		},
+		{
+			"i": 1006,
+			"l": "Graphs",
+			"bt": [1113, 1137],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1007,
+			"l": "Grassroots comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1008,
+			"l": "Graveyard poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1009,
+			"l": "Gravity anomaly maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1010,
+			"l": "Greeting cards",
+			"bt": [751, 1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 1011,
+			"l": "Gregorian chants",
+			"bt": [379, 2076],
+			"nt": [
+				1e3,
+				1858,
+				2002,
+				2164,
+				2517
+			],
+			"d": 2,
+			"n": 5,
+			"f": 131090
+		},
+		{
+			"i": 1012,
+			"l": "Grime (Music)",
+			"bt": [1953],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1013,
+			"l": "Grimoires",
+			"bt": [1029],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291456
+		},
+		{
+			"i": 1014,
+			"l": "Grindcore (Music)",
+			"bt": [1034, 2449],
+			"nt": [],
+			"d": 6,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1015,
+			"l": "Grunge music",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1016,
+			"l": "Guaguancós (Music)",
+			"bt": [899, 2066],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1017,
+			"l": "Guarachas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1018,
+			"l": "Guidebooks",
+			"bt": [1973],
+			"nt": [1752],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 1019,
+			"l": "Gumbé (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1020,
+			"l": "Habaneras (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1021,
+			"l": "Hadith stories",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1022,
+			"l": "Haggadot (Liturgical books)",
+			"bt": [1330],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 6293504
+		},
+		{
+			"i": 1023,
+			"l": "Hagiographical films",
+			"bt": [238, 1986],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1024,
+			"l": "Hagiographies",
+			"bt": [244, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2103298
+		},
+		{
+			"i": 1025,
+			"l": "Hahiwang",
+			"bt": [901, 1258],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1026,
+			"l": "Haibun",
+			"bt": [1855],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1027,
+			"l": "Haiku",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1028,
+			"l": "Hand-clapping games",
+			"bt": [1536],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1029,
+			"l": "Handbooks and manuals",
+			"bt": [1142, 1973],
+			"nt": [
+				607,
+				848,
+				1013,
+				1256,
+				1330,
+				1754,
+				2329,
+				2378
+			],
+			"d": 2,
+			"n": 13,
+			"f": 6291458
+		},
+		{
+			"i": 1030,
+			"l": "Hanukkah fiction",
+			"bt": [1985],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1031,
+			"l": "Hanukkah music",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1032,
+			"l": "Hanukkah plays",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1033,
+			"l": "Hard rock music",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1034,
+			"l": "Hardcore (Music)",
+			"bt": [1879],
+			"nt": [
+				567,
+				735,
+				1014,
+				2208
+			],
+			"d": 5,
+			"n": 4,
+			"f": 131088
+		},
+		{
+			"i": 1035,
+			"l": "Harmonies (Reference works)",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1036,
+			"l": "Haunted house films",
+			"bt": [844, 1672],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1037,
+			"l": "Haunted house television programs",
+			"bt": [846, 1675],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1038,
+			"l": "Health surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1039,
+			"l": "Hearings",
+			"bt": [654],
+			"nt": [1290],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1040,
+			"l": "Heavy metal (Music)",
+			"bt": [2033],
+			"nt": [
+				68,
+				253,
+				409,
+				610,
+				680,
+				693,
+				807,
+				983,
+				1814,
+				1839,
+				2222,
+				2314,
+				2449
+			],
+			"d": 3,
+			"n": 15,
+			"f": 131088
+		},
+		{
+			"i": 1041,
+			"l": "Heike biwa",
+			"bt": [125, 1559],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1042,
+			"l": "Heimatfilme",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1043,
+			"l": "Heroic drama",
+			"bt": [2485],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1044,
+			"l": "High Holiday music",
+			"bt": [791],
+			"nt": [2056, 2660],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1045,
+			"l": "High interest-low vocabulary books",
+			"bt": [1959],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1046,
+			"l": "Highlife (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1047,
+			"l": "Hindustani music",
+			"bt": [125],
+			"nt": [
+				629,
+				630,
+				706,
+				950,
+				1227,
+				1887,
+				2373
+			],
+			"d": 2,
+			"n": 7,
+			"f": 131088
+		},
+		{
+			"i": 1048,
+			"l": "Hip-hop (Music)",
+			"bt": [1794],
+			"nt": [
+				728,
+				1570,
+				2515
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 1049,
+			"l": "Hip-hop lyrics",
+			"bt": [1795],
+			"nt": [1954],
+			"d": 3,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 1050,
+			"l": "Hira gasy",
+			"bt": [125, 686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1051,
+			"l": "Historic structure reports",
+			"bt": [2380],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1052,
+			"l": "Historical comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1053,
+			"l": "Historical drama",
+			"bt": [684],
+			"nt": [1652, 2022],
+			"d": 2,
+			"n": 2,
+			"f": 32776
+		},
+		{
+			"i": 1054,
+			"l": "Historical fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1055,
+			"l": "Historical films",
+			"bt": [1516],
+			"nt": [1058],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 1056,
+			"l": "Historical poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1057,
+			"l": "Historical radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1058,
+			"l": "Historical reenactments (Motion pictures)",
+			"bt": [661, 1055],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1059,
+			"l": "Historical reenactments (Television programs)",
+			"bt": [665, 1060],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1060,
+			"l": "Historical television programs",
+			"bt": [2419],
+			"nt": [1059],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 1061,
+			"l": "Hobo songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1062,
+			"l": "Holy Week music",
+			"bt": [1294],
+			"nt": [2079, 2163],
+			"d": 4,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1063,
+			"l": "Home shopping television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1064,
+			"l": "Honky-tonk music",
+			"bt": [539],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1065,
+			"l": "Honkyoku",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1066,
+			"l": "Hora (Music)",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1067,
+			"l": "Hornbooks (Law)",
+			"bt": [1142, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4325890
+		},
+		{
+			"i": 1068,
+			"l": "Hornbooks (Primers)",
+			"bt": [2436],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1069,
+			"l": "Hornpipes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1070,
+			"l": "Horoscopes",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1071,
+			"l": "Horror comics",
+			"bt": [463],
+			"nt": [266],
+			"d": 3,
+			"n": 1,
+			"f": 8232
+		},
+		{
+			"i": 1072,
+			"l": "Horror fiction",
+			"bt": [843],
+			"nt": [267],
+			"d": 2,
+			"n": 1,
+			"f": 524300
+		},
+		{
+			"i": 1073,
+			"l": "Horror films",
+			"bt": [844],
+			"nt": [
+				268,
+				2218,
+				2276
+			],
+			"d": 3,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 1074,
+			"l": "Horror plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1075,
+			"l": "Horror poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1076,
+			"l": "Horror radio programs",
+			"bt": [845],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1077,
+			"l": "Horror television programs",
+			"bt": [2419],
+			"nt": [269],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 1078,
+			"l": "Horse ballets (Dance)",
+			"bt": [184],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1079,
+			"l": "Hospital reports",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1080,
+			"l": "House music",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1081,
+			"l": "Household sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1082,
+			"l": "Huapangos (Music)",
+			"bt": [2239],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1083,
+			"l": "Huaylas (Music)",
+			"bt": [
+				591,
+				899,
+				1794
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1084,
+			"l": "Huaynos",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1085,
+			"l": "Hulas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1086,
+			"l": "Human sounds",
+			"bt": [2259],
+			"nt": [203, 387],
+			"d": 1,
+			"n": 2,
+			"f": 1024
+		},
+		{
+			"i": 1087,
+			"l": "Humor",
+			"bt": [1970],
+			"nt": [
+				81,
+				252,
+				341,
+				350,
+				459,
+				460,
+				1088,
+				1089,
+				1090,
+				1091,
+				1092,
+				1380,
+				1880,
+				1912,
+				2108,
+				2180,
+				2281,
+				2299,
+				2399,
+				2472,
+				2650
+			],
+			"d": 1,
+			"n": 95,
+			"f": 0
+		},
+		{
+			"i": 1088,
+			"l": "Humorous comics",
+			"bt": [463, 1087],
+			"nt": [726, 2104],
+			"d": 3,
+			"n": 2,
+			"f": 8234
+		},
+		{
+			"i": 1089,
+			"l": "Humorous fiction",
+			"bt": [843, 1087],
+			"nt": [
+				204,
+				2106,
+				2364
+			],
+			"d": 2,
+			"n": 3,
+			"f": 14
+		},
+		{
+			"i": 1090,
+			"l": "Humorous monologues",
+			"bt": [1087, 1497],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1091,
+			"l": "Humorous music",
+			"bt": [1087, 1530],
+			"nt": [1093, 1537],
+			"d": 2,
+			"n": 7,
+			"f": 131090
+		},
+		{
+			"i": 1092,
+			"l": "Humorous poetry",
+			"bt": [1087, 1771],
+			"nt": [
+				312,
+				443,
+				809,
+				1251,
+				1314,
+				1597,
+				1999,
+				2103,
+				2120,
+				2128,
+				2159,
+				2562
+			],
+			"d": 2,
+			"n": 15,
+			"f": 16394
+		},
+		{
+			"i": 1093,
+			"l": "Humorous songs",
+			"bt": [1091, 2246],
+			"nt": [
+				207,
+				461,
+				1596,
+				1609,
+				2110
+			],
+			"d": 3,
+			"n": 5,
+			"f": 131090
+		},
+		{
+			"i": 1094,
+			"l": "Hunting fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1095,
+			"l": "Hunting music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1096,
+			"l": "Hunting surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1097,
+			"l": "Hyangga",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1098,
+			"l": "Hymn concertatos",
+			"bt": [122, 1102],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1099,
+			"l": "Hymn texts",
+			"bt": [2077, 2244],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 10
+		},
+		{
+			"i": 1100,
+			"l": "Hymn tunes",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1101,
+			"l": "Hymnals",
+			"bt": [2171],
+			"nt": [2181],
+			"d": 3,
+			"n": 1,
+			"f": 133136
+		},
+		{
+			"i": 1102,
+			"l": "Hymns",
+			"bt": [2076, 2246],
+			"nt": [
+				45,
+				404,
+				992,
+				1098,
+				1762,
+				2275,
+				2667
+			],
+			"d": 2,
+			"n": 9,
+			"f": 131090
+		},
+		{
+			"i": 1103,
+			"l": "Hyperpop (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1104,
+			"l": "Hypertext fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1105,
+			"l": "Hypertext poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1106,
+			"l": "Hát bội",
+			"bt": [125, 686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1107,
+			"l": "Hát chèo (Music)",
+			"bt": [686, 899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1108,
+			"l": "Hát ả đào",
+			"bt": [125, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1109,
+			"l": "Hēvisi (Music)",
+			"bt": [2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1110,
+			"l": "Iambic poetry",
+			"bt": [1771],
+			"nt": [51, 2015],
+			"d": 2,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 1111,
+			"l": "Ice show music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1112,
+			"l": "Ijāzah",
+			"bt": [1967, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 1113,
+			"l": "Illustrated works",
+			"bt": [2583],
+			"nt": [
+				23,
+				79,
+				264,
+				463,
+				565,
+				734,
+				848,
+				879,
+				981,
+				1006,
+				1010,
+				1135,
+				1637,
+				1666,
+				1734,
+				1747,
+				1748,
+				1765,
+				1809,
+				1810,
+				2478,
+				2483,
+				2641
+			],
+			"d": 1,
+			"n": 158,
+			"f": 32
+		},
+		{
+			"i": 1114,
+			"l": "Image albums",
+			"bt": [
+				1530,
+				1847,
+				2259
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2229266
+		},
+		{
+			"i": 1115,
+			"l": "Imagist poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1116,
+			"l": "Impromptus (Drama)",
+			"bt": [1450],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1117,
+			"l": "Impromptus (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1118,
+			"l": "Improvisations (Dance)",
+			"bt": [587],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1119,
+			"l": "Improvisations (Music)",
+			"bt": [1530],
+			"nt": [2360],
+			"d": 1,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1120,
+			"l": "In nomines (Music)",
+			"bt": [373],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1121,
+			"l": "Incantations",
+			"bt": [1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 1122,
+			"l": "Incidental music",
+			"bt": [686],
+			"nt": [1209, 1612],
+			"d": 2,
+			"n": 4,
+			"f": 131088
+		},
+		{
+			"i": 1123,
+			"l": "Incunabula",
+			"bt": [],
+			"nt": [],
+			"d": 0,
+			"n": 0,
+			"f": 131073
+		},
+		{
+			"i": 1124,
+			"l": "Independent films",
+			"bt": [1516],
+			"nt": [1525],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 1125,
+			"l": "Index maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1126,
+			"l": "Indexes",
+			"bt": [1973],
+			"nt": [504, 2009],
+			"d": 2,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 1127,
+			"l": "Indie pop music",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1128,
+			"l": "Indigenous futurisms comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1129,
+			"l": "Indulgences (Canon law)",
+			"bt": [1272, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1130,
+			"l": "Industrial dance music",
+			"bt": [729, 1132],
+			"nt": [294],
+			"d": 4,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1131,
+			"l": "Industrial films",
+			"bt": [1144],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 4325472
+		},
+		{
+			"i": 1132,
+			"l": "Industrial music",
+			"bt": [2033],
+			"nt": [
+				602,
+				605,
+				1130,
+				1813
+			],
+			"d": 3,
+			"n": 5,
+			"f": 131088
+		},
+		{
+			"i": 1133,
+			"l": "Industrial musicals",
+			"bt": [1541],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1134,
+			"l": "Industrial television programs",
+			"bt": [1146],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 4325472
+		},
+		{
+			"i": 1135,
+			"l": "Infographics",
+			"bt": [1113, 1137],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1136,
+			"l": "Infomercials",
+			"bt": [1848],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228320
+		},
+		{
+			"i": 1137,
+			"l": "Informational works",
+			"bt": [],
+			"nt": [
+				6,
+				7,
+				26,
+				27,
+				95,
+				112,
+				116,
+				140,
+				141,
+				147,
+				244,
+				255,
+				259,
+				284,
+				297,
+				348,
+				352,
+				437,
+				439,
+				448,
+				449,
+				450,
+				481,
+				508,
+				509,
+				517,
+				535,
+				548,
+				549,
+				558,
+				563,
+				578,
+				608,
+				609,
+				618,
+				658,
+				662,
+				752,
+				776,
+				786,
+				794,
+				817,
+				879,
+				882,
+				891,
+				892,
+				910,
+				965,
+				967,
+				969,
+				1006,
+				1038,
+				1070,
+				1096,
+				1135,
+				1164,
+				1189,
+				1270,
+				1291,
+				1292,
+				1320,
+				1341,
+				1343,
+				1370,
+				1371,
+				1389,
+				1394,
+				1425,
+				1447,
+				1465,
+				1488,
+				1531,
+				1576,
+				1616,
+				1623,
+				1628,
+				1629,
+				1641,
+				1722,
+				1732,
+				1767,
+				1775,
+				1797,
+				1810,
+				1818,
+				1822,
+				1825,
+				1834,
+				1838,
+				1847,
+				1854,
+				1856,
+				1869,
+				1870,
+				1871,
+				1872,
+				1873,
+				1875,
+				1876,
+				1897,
+				1908,
+				1916,
+				1923,
+				1924,
+				1940,
+				1942,
+				1967,
+				1968,
+				1973,
+				1977,
+				1978,
+				1994,
+				2004,
+				2005,
+				2010,
+				2065,
+				2140,
+				2141,
+				2168,
+				2230,
+				2231,
+				2235,
+				2236,
+				2268,
+				2269,
+				2306,
+				2344,
+				2380,
+				2412,
+				2439,
+				2464,
+				2465,
+				2484,
+				2502,
+				2506,
+				2507,
+				2508,
+				2535,
+				2571,
+				2580,
+				2590,
+				2607,
+				2624,
+				2627,
+				2628,
+				2652,
+				2675
+			],
+			"d": 0,
+			"n": 497,
+			"f": 2097153
+		},
+		{
+			"i": 1138,
+			"l": "Inspirational radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1139,
+			"l": "Installation guides (Exhibition documentation)",
+			"bt": [1142, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 6291458
+		},
+		{
+			"i": 1140,
+			"l": "Installation views (Exhibition documentation)",
+			"bt": [1967, 2583],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1141,
+			"l": "Installation works (Art)",
+			"bt": [123],
+			"nt": [2567],
+			"d": 2,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 1142,
+			"l": "Instructional and educational works",
+			"bt": [],
+			"nt": [
+				53,
+				356,
+				524,
+				545,
+				627,
+				638,
+				640,
+				641,
+				642,
+				721,
+				722,
+				723,
+				724,
+				725,
+				792,
+				795,
+				832,
+				1029,
+				1067,
+				1139,
+				1143,
+				1144,
+				1145,
+				1146,
+				1164,
+				1203,
+				1277,
+				1304,
+				1390,
+				1486,
+				1647,
+				1710,
+				1712,
+				1732,
+				1739,
+				1832,
+				1965,
+				2080,
+				2155,
+				2156,
+				2327,
+				2328,
+				2379,
+				2436,
+				2479,
+				2648
+			],
+			"d": 0,
+			"n": 89,
+			"f": 4194305
+		},
+		{
+			"i": 1143,
+			"l": "Instructional comics",
+			"bt": [1142, 1590],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 4202538
+		},
+		{
+			"i": 1144,
+			"l": "Instructional films",
+			"bt": [1142, 1591],
+			"nt": [1131],
+			"d": 3,
+			"n": 1,
+			"f": 4325474
+		},
+		{
+			"i": 1145,
+			"l": "Instructional radio programs",
+			"bt": [1142, 1593],
+			"nt": [2138],
+			"d": 3,
+			"n": 1,
+			"f": 4326530
+		},
+		{
+			"i": 1146,
+			"l": "Instructional television programs",
+			"bt": [1142, 1594],
+			"nt": [1134],
+			"d": 3,
+			"n": 1,
+			"f": 4325474
+		},
+		{
+			"i": 1147,
+			"l": "Instrumental settings",
+			"bt": [619, 1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1148,
+			"l": "Intabulations",
+			"bt": [122, 2142],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1149,
+			"l": "Intaglio prints",
+			"bt": [1826],
+			"nt": [739, 778],
+			"d": 2,
+			"n": 2,
+			"f": 32
+		},
+		{
+			"i": 1150,
+			"l": "Intelligent dance music",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1151,
+			"l": "Intergovernmental agreements",
+			"bt": [1272, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1152,
+			"l": "Interludes (Drama)",
+			"bt": [684],
+			"nt": [1250],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1153,
+			"l": "Interludes (Music)",
+			"bt": [125],
+			"nt": [
+				743,
+				2084,
+				2471
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 1154,
+			"l": "Intermezzos (Instrumental music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1155,
+			"l": "Internet radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1156,
+			"l": "Internet videos",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1157,
+			"l": "Intersex comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1158,
+			"l": "Intersex fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1159,
+			"l": "Intersex films",
+			"bt": [1895],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1160,
+			"l": "Intersex poetry",
+			"bt": [1896],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1161,
+			"l": "Intersex television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1162,
+			"l": "Interstitial television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1163,
+			"l": "Interviews",
+			"bt": [654],
+			"nt": [1638],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1164,
+			"l": "Introductory works",
+			"bt": [1137, 1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 6291458
+		},
+		{
+			"i": 1165,
+			"l": "Introits (Music)",
+			"bt": [1853],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1166,
+			"l": "Invectives (Literature)",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1167,
+			"l": "Irohauta",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1168,
+			"l": "Isekai anime (Motion pictures)",
+			"bt": [93, 828],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1169,
+			"l": "Isekai anime (Television programs)",
+			"bt": [94, 831],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1170,
+			"l": "Isekai manga",
+			"bt": [825, 1386],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 1171,
+			"l": "Isicathamiya",
+			"bt": [899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1172,
+			"l": "Italo disco (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1173,
+			"l": "Itineraries",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1174,
+			"l": "Jack tales",
+			"bt": [905],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1175,
+			"l": "Jangle pop (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1176,
+			"l": "Jarigan",
+			"bt": [904, 1559],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1177,
+			"l": "Jataka stories",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1178,
+			"l": "Jazz",
+			"bt": [1794],
+			"nt": [
+				13,
+				281,
+				525,
+				657,
+				921,
+				1181,
+				1263,
+				1610,
+				2350,
+				2448,
+				2622
+			],
+			"d": 2,
+			"n": 13,
+			"f": 131088
+		},
+		{
+			"i": 1179,
+			"l": "Jazz poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1180,
+			"l": "Jazz radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1181,
+			"l": "Jazz-rock (Music)",
+			"bt": [1178, 2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1182,
+			"l": "Jhumur (Music)",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1183,
+			"l": "Jiggs (Ballad operas)",
+			"bt": [176],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1184,
+			"l": "Jigs (Dance music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1185,
+			"l": "Jigsaw puzzles",
+			"bt": [1886, 2583],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 1186,
+			"l": "Jingles (Advertising songs)",
+			"bt": [
+				1794,
+				2200,
+				2246
+			],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 2229490
+		},
+		{
+			"i": 1187,
+			"l": "Jitanjáforas",
+			"bt": [1597, 2258],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1188,
+			"l": "Jiuta",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1189,
+			"l": "Job descriptions",
+			"bt": [751, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1190,
+			"l": "Jongos (Music)",
+			"bt": [591, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1191,
+			"l": "Joropos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1192,
+			"l": "Jotas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1193,
+			"l": "Journalism films",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1194,
+			"l": "Journalism television programs",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1195,
+			"l": "Judicial statistics",
+			"bt": [1272, 2305],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1196,
+			"l": "Jue ju",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1197,
+			"l": "Jukebox musicals",
+			"bt": [1541],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1198,
+			"l": "Jump blues (Music)",
+			"bt": [261, 2350],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1199,
+			"l": "Jump rope rhymes",
+			"bt": [1611],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1200,
+			"l": "Jungle (Music)",
+			"bt": [729],
+			"nt": [294],
+			"d": 4,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1201,
+			"l": "Jungle films",
+			"bt": [20],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1202,
+			"l": "Jungle television programs",
+			"bt": [22],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1203,
+			"l": "Jury instructions",
+			"bt": [1142, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4325890
+		},
+		{
+			"i": 1204,
+			"l": "Juvenile delinquency films",
+			"bt": [561, 2382],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1205,
+			"l": "Juvenile delinquency television programs",
+			"bt": [2383, 2404],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1206,
+			"l": "Juvenilia",
+			"bt": [
+				123,
+				1326,
+				1530
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 58
+		},
+		{
+			"i": 1207,
+			"l": "Jùjú music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1208,
+			"l": "Jōruri (Music)",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1209,
+			"l": "Kabuki music",
+			"bt": [1122],
+			"nt": [1556],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1210,
+			"l": "Kabuki plays",
+			"bt": [684],
+			"nt": [2177],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1211,
+			"l": "Kacapi-suling",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1212,
+			"l": "Kafas",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1213,
+			"l": "Kagok",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1214,
+			"l": "Kakawin",
+			"bt": [755],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1215,
+			"l": "Kalgi-tura",
+			"bt": [904, 1559],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1216,
+			"l": "Kamishibai plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1217,
+			"l": "Kammerspiel films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1218,
+			"l": "Kamyŏn'gŭk plays",
+			"bt": [589, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1219,
+			"l": "Kanto (Popular music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1220,
+			"l": "Kantrum (Music)",
+			"bt": [899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1221,
+			"l": "Karaoke",
+			"bt": [1794, 1966],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132114
+		},
+		{
+			"i": 1222,
+			"l": "Kasa",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1223,
+			"l": "Kaskawi (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1224,
+			"l": "KenKen puzzles",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1225,
+			"l": "Keroncong",
+			"bt": [1794, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1226,
+			"l": "Ketubahs",
+			"bt": [520],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 1227,
+			"l": "Khayāl",
+			"bt": [1047, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1228,
+			"l": "Khōn plays",
+			"bt": [589],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1229,
+			"l": "Kinescope films",
+			"bt": [1516, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1230,
+			"l": "Klezmer music",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1231,
+			"l": "Knock-knock jokes",
+			"bt": [1880],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1232,
+			"l": "Koans",
+			"bt": [1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 1233,
+			"l": "Koli︠a︡dy (Music)",
+			"bt": [346, 791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1234,
+			"l": "Kolos (Music)",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1235,
+			"l": "Konkoma",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1236,
+			"l": "Konpa (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1237,
+			"l": "Koridos",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1238,
+			"l": "Kotéba plays",
+			"bt": [460, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1239,
+			"l": "Kouta",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1240,
+			"l": "Kouta texts",
+			"bt": [903],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1241,
+			"l": "Kpegisu (Music)",
+			"bt": [591, 791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1242,
+			"l": "Krakowiaks (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1243,
+			"l": "Krautrock (Music)",
+			"bt": [1840],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1244,
+			"l": "Kuai shu",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1245,
+			"l": "Kur̲avañci plays",
+			"bt": [
+				589,
+				897,
+				2560
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1246,
+			"l": "Kuyis",
+			"bt": [899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1247,
+			"l": "Kwaito",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1248,
+			"l": "Kwaya",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1249,
+			"l": "Kyriales",
+			"bt": [2171],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 1250,
+			"l": "Kyōgen plays",
+			"bt": [460, 1152],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1251,
+			"l": "Kyōka",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1252,
+			"l": "Kāfī (Music)",
+			"bt": [
+				125,
+				2076,
+				2246
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1253,
+			"l": "Kāfī (Poetry)",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1254,
+			"l": "Kōlam drama",
+			"bt": [589, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1255,
+			"l": "Kōwaka drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1256,
+			"l": "Laboratory manuals",
+			"bt": [1029],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291456
+		},
+		{
+			"i": 1257,
+			"l": "Lakhō̜n chātrī plays",
+			"bt": [589, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1258,
+			"l": "Laments",
+			"bt": [1771],
+			"nt": [1025],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 1259,
+			"l": "Land surveys",
+			"bt": [2344],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1260,
+			"l": "Language poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1261,
+			"l": "Lanternes",
+			"bt": [2582],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16424
+		},
+		{
+			"i": 1262,
+			"l": "Large print books",
+			"bt": [],
+			"nt": [],
+			"d": 0,
+			"n": 0,
+			"f": 65537
+		},
+		{
+			"i": 1263,
+			"l": "Latin jazz",
+			"bt": [1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1264,
+			"l": "Latin pop",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1265,
+			"l": "Latin trap (Music)",
+			"bt": [1976, 2501],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1266,
+			"l": "Laudatory poetry",
+			"bt": [1771],
+			"nt": [1417],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 1267,
+			"l": "Laude",
+			"bt": [2076, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1268,
+			"l": "Lauds (Music)",
+			"bt": [656, 1510],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1269,
+			"l": "Law commentaries",
+			"bt": [654, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131586
+		},
+		{
+			"i": 1270,
+			"l": "Law digests",
+			"bt": [
+				619,
+				1137,
+				1272
+			],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1271,
+			"l": "Law for laypersons",
+			"bt": [1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131584
+		},
+		{
+			"i": 1272,
+			"l": "Law materials",
+			"bt": [],
+			"nt": [
+				26,
+				27,
+				141,
+				191,
+				353,
+				432,
+				437,
+				449,
+				450,
+				505,
+				513,
+				516,
+				517,
+				548,
+				549,
+				550,
+				578,
+				658,
+				794,
+				838,
+				1067,
+				1129,
+				1151,
+				1195,
+				1203,
+				1269,
+				1270,
+				1271,
+				1273,
+				1282,
+				1283,
+				1284,
+				1291,
+				1292,
+				1346,
+				1465,
+				1486,
+				1623,
+				1641,
+				1830,
+				1834,
+				1968,
+				2001,
+				2004,
+				2005,
+				2007,
+				2064,
+				2306,
+				2502,
+				2509,
+				2510,
+				2535,
+				2652
+			],
+			"d": 0,
+			"n": 84,
+			"f": 131585
+		},
+		{
+			"i": 1273,
+			"l": "Law reviews",
+			"bt": [1272, 1719],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1274,
+			"l": "Lays (Narrative poetry)",
+			"bt": [1558],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1275,
+			"l": "Lead sheets",
+			"bt": [815],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1276,
+			"l": "Lectionaries",
+			"bt": [1718],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1277,
+			"l": "Lectures",
+			"bt": [654, 1142],
+			"nt": [1921],
+			"d": 1,
+			"n": 1,
+			"f": 4194306
+		},
+		{
+			"i": 1278,
+			"l": "Legal comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1279,
+			"l": "Legal drama (Literature)",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1280,
+			"l": "Legal fiction (Literature)",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1281,
+			"l": "Legal films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1282,
+			"l": "Legal forms",
+			"bt": [255, 1272],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1283,
+			"l": "Legal instruments",
+			"bt": [1272, 1967],
+			"nt": [
+				35,
+				232,
+				307,
+				383,
+				478,
+				520,
+				526,
+				1285,
+				1286,
+				1708,
+				2630,
+				2649
+			],
+			"d": 2,
+			"n": 17,
+			"f": 2228738
+		},
+		{
+			"i": 1284,
+			"l": "Legal maxims",
+			"bt": [1272, 2113],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1285,
+			"l": "Legal memorandums",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 1286,
+			"l": "Legal petitions",
+			"bt": [1283],
+			"nt": [1993],
+			"d": 3,
+			"n": 1,
+			"f": 2228736
+		},
+		{
+			"i": 1287,
+			"l": "Legal television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1288,
+			"l": "Legends",
+			"bt": [898],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1289,
+			"l": "Legislative bills",
+			"bt": [1291, 1292],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1290,
+			"l": "Legislative hearings",
+			"bt": [1039, 1292],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1291,
+			"l": "Legislative histories",
+			"bt": [1137, 1272],
+			"nt": [1289],
+			"d": 1,
+			"n": 1,
+			"f": 2228738
+		},
+		{
+			"i": 1292,
+			"l": "Legislative materials",
+			"bt": [1137, 1272],
+			"nt": [1289, 1290],
+			"d": 1,
+			"n": 2,
+			"f": 2228738
+		},
+		{
+			"i": 1293,
+			"l": "Lenong plays",
+			"bt": [897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1294,
+			"l": "Lenten music",
+			"bt": [791, 2076],
+			"nt": [1062, 2002],
+			"d": 3,
+			"n": 4,
+			"f": 131090
+		},
+		{
+			"i": 1295,
+			"l": "Lenten sermons",
+			"bt": [1617],
+			"nt": [136],
+			"d": 3,
+			"n": 1,
+			"f": 2048
+		},
+		{
+			"i": 1296,
+			"l": "Lesbian comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1297,
+			"l": "Lesbian drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1298,
+			"l": "Lesbian fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1299,
+			"l": "Lesbian films",
+			"bt": [1895],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1300,
+			"l": "Lesbian musicals",
+			"bt": [1541],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1301,
+			"l": "Lesbian operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1302,
+			"l": "Lesbian poetry",
+			"bt": [1896],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1303,
+			"l": "Lesbian television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1304,
+			"l": "Lesson plans",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1305,
+			"l": "Letters to the editor",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1306,
+			"l": "Lian hua lao",
+			"bt": [897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1307,
+			"l": "Library catalogs",
+			"bt": [354],
+			"nt": [2536],
+			"d": 3,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 1308,
+			"l": "Librettos",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1309,
+			"l": "Liederspiels",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1310,
+			"l": "Lift-the-flap books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1311,
+			"l": "Light novels",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1312,
+			"l": "Likē drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1313,
+			"l": "Lilit",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1314,
+			"l": "Limericks",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1315,
+			"l": "Linguistic atlases",
+			"bt": [140],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097408
+		},
+		{
+			"i": 1316,
+			"l": "Linked stories",
+			"bt": [1605, 2186],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 14
+		},
+		{
+			"i": 1317,
+			"l": "Linked verse",
+			"bt": [1771],
+			"nt": [
+				1996,
+				1997,
+				1999,
+				2e3
+			],
+			"d": 2,
+			"n": 4,
+			"f": 16392
+		},
+		{
+			"i": 1318,
+			"l": "Linocuts",
+			"bt": [1981],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1319,
+			"l": "Liras",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1320,
+			"l": "Lists",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1321,
+			"l": "Litanies",
+			"bt": [1330, 1817],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 6293506
+		},
+		{
+			"i": 1322,
+			"l": "Litanies (Music)",
+			"bt": [2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1323,
+			"l": "Literary cookbooks",
+			"bt": [524],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1324,
+			"l": "Literary criticism",
+			"bt": [654],
+			"nt": [465],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1325,
+			"l": "Literary readings",
+			"bt": [654],
+			"nt": [1772],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1326,
+			"l": "Literature",
+			"bt": [],
+			"nt": [
+				160,
+				219,
+				227,
+				252,
+				276,
+				349,
+				463,
+				467,
+				495,
+				580,
+				634,
+				659,
+				684,
+				795,
+				843,
+				898,
+				981,
+				1021,
+				1166,
+				1177,
+				1206,
+				1441,
+				1540,
+				1679,
+				1699,
+				1771,
+				1843,
+				1901,
+				2045,
+				2082,
+				2108
+			],
+			"d": 0,
+			"n": 646,
+			"f": 9
+		},
+		{
+			"i": 1327,
+			"l": "Lithographs",
+			"bt": [1826],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1328,
+			"l": "LitRPG (Fiction)",
+			"bt": [827, 2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524302
+		},
+		{
+			"i": 1329,
+			"l": "Little magazines",
+			"bt": [751, 1719],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1330,
+			"l": "Liturgical books",
+			"bt": [1029, 1988],
+			"nt": [
+				296,
+				1022,
+				1321,
+				1862,
+				2063
+			],
+			"d": 3,
+			"n": 5,
+			"f": 6293506
+		},
+		{
+			"i": 1331,
+			"l": "Liturgical drama",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1332,
+			"l": "Liturgical poetry",
+			"bt": [1989],
+			"nt": [169],
+			"d": 3,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 1333,
+			"l": "Live sound recordings",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1334,
+			"l": "Live television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1335,
+			"l": "Live-action/animation films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1336,
+			"l": "Live-action/animation television programs",
+			"bt": [92],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1337,
+			"l": "Living newspapers",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1338,
+			"l": "Lo-fi (Rock music)",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1339,
+			"l": "Loas",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1340,
+			"l": "Lobby cards",
+			"bt": [858],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 1341,
+			"l": "Local histories",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1342,
+			"l": "Logic puzzles",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1343,
+			"l": "Longitudinal studies",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1344,
+			"l": "Lookbooks",
+			"bt": [1734, 1847],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1345,
+			"l": "Loop films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1346,
+			"l": "Loose-leaf services",
+			"bt": [1272, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1347,
+			"l": "Loran charts",
+			"bt": [34, 1566],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228514
+		},
+		{
+			"i": 1348,
+			"l": "Lounge music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1349,
+			"l": "Love letters",
+			"bt": [1721],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1350,
+			"l": "Love poetry",
+			"bt": [1771],
+			"nt": [142, 1579],
+			"d": 2,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 1351,
+			"l": "Love songs",
+			"bt": [2246],
+			"nt": [2175],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1352,
+			"l": "Low budget films",
+			"bt": [1516],
+			"nt": [170, 1525],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 1353,
+			"l": "Luk thung (Music)",
+			"bt": [904, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1354,
+			"l": "Lullabies (Songs)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1355,
+			"l": "Lundus",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1356,
+			"l": "Lyric poetry",
+			"bt": [1771],
+			"nt": [
+				142,
+				488,
+				685,
+				733,
+				1436,
+				1579,
+				1620,
+				1707,
+				1888,
+				2204,
+				2249
+			],
+			"d": 2,
+			"n": 11,
+			"f": 16392
+		},
+		{
+			"i": 1357,
+			"l": "Lyrical films",
+			"bt": [803],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1358,
+			"l": "Ländler (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1359,
+			"l": "Lü shi",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1360,
+			"l": "Ma'lūf",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1361,
+			"l": "Macaronic verse",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1362,
+			"l": "Machine plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1363,
+			"l": "Machinery sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1364,
+			"l": "Machinima films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1365,
+			"l": "Machinima television programs",
+			"bt": [92],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1366,
+			"l": "Mad scientist films",
+			"bt": [1504],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1367,
+			"l": "Made-for-TV movies",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1368,
+			"l": "Madrigal comedies",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1369,
+			"l": "Madrigals (Music)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1370,
+			"l": "Magazine format radio programs",
+			"bt": [1137, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1371,
+			"l": "Magazine format television programs",
+			"bt": [1137, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1372,
+			"l": "Magic realist comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1373,
+			"l": "Magic realist fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1374,
+			"l": "Magic realist films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1375,
+			"l": "Magic realist plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1376,
+			"l": "Mail art",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1377,
+			"l": "Makeover television programs",
+			"bt": [1961],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1378,
+			"l": "Makossa (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1379,
+			"l": "Makyung plays",
+			"bt": [589, 897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1380,
+			"l": "Malapropisms",
+			"bt": [1087, 1900],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1381,
+			"l": "Malhūn (Music)",
+			"bt": [125, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1382,
+			"l": "Maloya (Music)",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1383,
+			"l": "Mambos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1384,
+			"l": "Mandalas",
+			"bt": [1988, 2583],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2082
+		},
+		{
+			"i": 1385,
+			"l": "Mandó",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1386,
+			"l": "Manga",
+			"bt": [463],
+			"nt": [
+				289,
+				1170,
+				2154,
+				2190,
+				2192,
+				2664
+			],
+			"d": 3,
+			"n": 6,
+			"f": 8232
+		},
+		{
+			"i": 1387,
+			"l": "Mangue",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1388,
+			"l": "Manhwa",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1389,
+			"l": "Manifestos",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1390,
+			"l": "Manipulatives (Education)",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1391,
+			"l": "Manuscript maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1392,
+			"l": "Manuscripts",
+			"bt": [],
+			"nt": [1667, 2147],
+			"d": 0,
+			"n": 2,
+			"f": 1
+		},
+		{
+			"i": 1393,
+			"l": "Mappae mundi",
+			"bt": [709, 1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097442
+		},
+		{
+			"i": 1394,
+			"l": "Maps",
+			"bt": [
+				347,
+				1137,
+				2583
+			],
+			"nt": [
+				34,
+				285,
+				309,
+				323,
+				358,
+				392,
+				484,
+				585,
+				645,
+				708,
+				784,
+				880,
+				893,
+				968,
+				993,
+				1009,
+				1125,
+				1391,
+				1393,
+				1446,
+				1451,
+				1462,
+				1469,
+				1471,
+				1566,
+				1646,
+				1678,
+				1737,
+				1740,
+				1746,
+				1805,
+				1890,
+				1969,
+				1995,
+				2025,
+				2304,
+				2311,
+				2323,
+				2446,
+				2474,
+				2476,
+				2477,
+				2498,
+				2539,
+				2591,
+				2626,
+				2646,
+				2674
+			],
+			"d": 1,
+			"n": 54,
+			"f": 2097442
+		},
+		{
+			"i": 1395,
+			"l": "Maqāmāt",
+			"bt": [1855],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1396,
+			"l": "Marches (Music)",
+			"bt": [930],
+			"nt": [1898],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1397,
+			"l": "Marginalia",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1398,
+			"l": "Mariachi (Music)",
+			"bt": [
+				591,
+				899,
+				1794
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1399,
+			"l": "Marineras (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1400,
+			"l": "Marsiyas",
+			"bt": [731],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1401,
+			"l": "Martial arts comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1402,
+			"l": "Martial arts fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1403,
+			"l": "Martial arts films",
+			"bt": [20],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1404,
+			"l": "Martial arts television programs",
+			"bt": [22],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1405,
+			"l": "Martyrologies",
+			"bt": [1978, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 1406,
+			"l": "Mashups (Music)",
+			"bt": [1992],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 132112
+		},
+		{
+			"i": 1407,
+			"l": "Mashyakhah",
+			"bt": [1978, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 1408,
+			"l": "Maskanda",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1409,
+			"l": "Masnavis",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1410,
+			"l": "Masonic music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1411,
+			"l": "Masques",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1412,
+			"l": "Masques (Music)",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1413,
+			"l": "Masses",
+			"bt": [791, 2076],
+			"nt": [2003],
+			"d": 3,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1414,
+			"l": "Matachines (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1415,
+			"l": "Math rock (Music)",
+			"bt": [1840],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1416,
+			"l": "Mathematical fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1417,
+			"l": "Mawlids (Poetry)",
+			"bt": [628, 1266],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1418,
+			"l": "Maze puzzles",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1419,
+			"l": "Mazurkas (Music)",
+			"bt": [591],
+			"nt": [1786],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1420,
+			"l": "Maʻaravot",
+			"bt": [1762],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1421,
+			"l": "Mbalax",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1422,
+			"l": "Mbaqanga",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1423,
+			"l": "Mchiriku",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1424,
+			"l": "Media guides (Sports)",
+			"bt": [1847],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1425,
+			"l": "Medical code lists",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1426,
+			"l": "Medical drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1427,
+			"l": "Medical fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1428,
+			"l": "Medical films (Motion pictures)",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1429,
+			"l": "Medical radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1430,
+			"l": "Medical sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1431,
+			"l": "Medical statistics",
+			"bt": [2305],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1432,
+			"l": "Medical television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1433,
+			"l": "Meditation music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1434,
+			"l": "Meditations",
+			"bt": [627],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4196352
+		},
+		{
+			"i": 1435,
+			"l": "Medleys (Music)",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1436,
+			"l": "Melic poetry",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1437,
+			"l": "Melodramas (Drama)",
+			"bt": [684],
+			"nt": [1567],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1438,
+			"l": "Melodramas (Motion pictures)",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1439,
+			"l": "Melodramas (Music)",
+			"bt": [686],
+			"nt": [1496],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1440,
+			"l": "Memoirs",
+			"bt": [156],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2101248
+		},
+		{
+			"i": 1441,
+			"l": "Memorates",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1442,
+			"l": "Memorial books",
+			"bt": [475],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1443,
+			"l": "Memorial music",
+			"bt": [475, 930],
+			"nt": [732],
+			"d": 2,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1444,
+			"l": "Memorial service programs",
+			"bt": [475, 1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1445,
+			"l": "Memory plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1446,
+			"l": "Mental maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1447,
+			"l": "Menus",
+			"bt": [751, 1137],
+			"nt": [2631],
+			"d": 1,
+			"n": 1,
+			"f": 2097154
+		},
+		{
+			"i": 1448,
+			"l": "Merengues (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1449,
+			"l": "Messages (Official communications)",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1450,
+			"l": "Metadramas",
+			"bt": [684],
+			"nt": [1116],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1451,
+			"l": "Meteorological charts",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1452,
+			"l": "Methods (Music)",
+			"bt": [2379],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4325392
+		},
+		{
+			"i": 1453,
+			"l": "Michaelmas music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1454,
+			"l": "Microblogs",
+			"bt": [259],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1455,
+			"l": "Microform materials",
+			"bt": [],
+			"nt": [],
+			"d": 0,
+			"n": 0,
+			"f": 131073
+		},
+		{
+			"i": 1456,
+			"l": "Micropoetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1457,
+			"l": "Microtonal music",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1458,
+			"l": "Military calls",
+			"bt": [1463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1459,
+			"l": "Military correspondence",
+			"bt": [531, 1464],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1460,
+			"l": "Military fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1461,
+			"l": "Military films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1462,
+			"l": "Military maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1463,
+			"l": "Military music",
+			"bt": [930],
+			"nt": [1458],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1464,
+			"l": "Military records",
+			"bt": [1967],
+			"nt": [1459, 1640],
+			"d": 2,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 1465,
+			"l": "Military regulations",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1466,
+			"l": "Military television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1467,
+			"l": "Milongas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1468,
+			"l": "Mime plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1469,
+			"l": "Mine maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1470,
+			"l": "Miniature books",
+			"bt": [],
+			"nt": [2456],
+			"d": 0,
+			"n": 1,
+			"f": 65537
+		},
+		{
+			"i": 1471,
+			"l": "Miniature maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1472,
+			"l": "Minimal music",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1473,
+			"l": "Minnesang",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1474,
+			"l": "Minstrel music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1475,
+			"l": "Minstrel shows",
+			"bt": [2012],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1476,
+			"l": "Minuets (Dance)",
+			"bt": [546],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1477,
+			"l": "Minuets (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1478,
+			"l": "Minutes (Records)",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1479,
+			"l": "Missals (Service books)",
+			"bt": [2171],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 1480,
+			"l": "Mission music",
+			"bt": [930, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1481,
+			"l": "Missionary plays",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1482,
+			"l": "Mixed media works",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1483,
+			"l": "Mixtapes",
+			"bt": [1530, 2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 132114
+		},
+		{
+			"i": 1484,
+			"l": "Mock-heroic drama",
+			"bt": [460, 2108],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1485,
+			"l": "Mock-heroic poetry",
+			"bt": [2562],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1486,
+			"l": "Model acts",
+			"bt": [1142, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4325890
+		},
+		{
+			"i": 1487,
+			"l": "Model operas",
+			"bt": [396],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1488,
+			"l": "Models (Representations)",
+			"bt": [1137, 2583],
+			"nt": [
+				80,
+				138,
+				987,
+				1980
+			],
+			"d": 1,
+			"n": 8,
+			"f": 2097186
+		},
+		{
+			"i": 1489,
+			"l": "Modern dance music",
+			"bt": [591, 686],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1490,
+			"l": "Modinhas",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1491,
+			"l": "Molam (Music)",
+			"bt": [904, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1492,
+			"l": "Monastic constitutions",
+			"bt": [517, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2230786
+		},
+		{
+			"i": 1493,
+			"l": "Monastic rules",
+			"bt": [27, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2230786
+		},
+		{
+			"i": 1494,
+			"l": "Monferrinas (Music)",
+			"bt": [542],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1495,
+			"l": "Monodramas (Literature)",
+			"bt": [684],
+			"nt": [1756],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1496,
+			"l": "Monodramas (Music)",
+			"bt": [1439, 1498],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1497,
+			"l": "Monologues (Drama)",
+			"bt": [684],
+			"nt": [1090, 2237],
+			"d": 2,
+			"n": 2,
+			"f": 32776
+		},
+		{
+			"i": 1498,
+			"l": "Monologues (Music)",
+			"bt": [686],
+			"nt": [1496],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1499,
+			"l": "Monophonic chansons",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1500,
+			"l": "Monostichs",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1501,
+			"l": "Monster comics",
+			"bt": [463],
+			"nt": [
+				2547,
+				2612,
+				2669
+			],
+			"d": 3,
+			"n": 3,
+			"f": 8232
+		},
+		{
+			"i": 1502,
+			"l": "Monster drama",
+			"bt": [684],
+			"nt": [
+				2548,
+				2613,
+				2670
+			],
+			"d": 2,
+			"n": 3,
+			"f": 32776
+		},
+		{
+			"i": 1503,
+			"l": "Monster fiction",
+			"bt": [843],
+			"nt": [
+				2549,
+				2614,
+				2671
+			],
+			"d": 2,
+			"n": 3,
+			"f": 12
+		},
+		{
+			"i": 1504,
+			"l": "Monster films",
+			"bt": [1516],
+			"nt": [
+				1366,
+				2550,
+				2615,
+				2672
+			],
+			"d": 2,
+			"n": 4,
+			"f": 131168
+		},
+		{
+			"i": 1505,
+			"l": "Monster television programs",
+			"bt": [2419],
+			"nt": [
+				2551,
+				2616,
+				2673
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 1506,
+			"l": "Mood films",
+			"bt": [844],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1507,
+			"l": "Morality plays",
+			"bt": [
+				53,
+				640,
+				1984
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 4227082
+		},
+		{
+			"i": 1508,
+			"l": "Moresche (Songs)",
+			"bt": [2576],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1509,
+			"l": "Mornas (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1510,
+			"l": "Morning service music",
+			"bt": [791, 2076],
+			"nt": [1268, 1645],
+			"d": 3,
+			"n": 2,
+			"f": 131090
+		},
+		{
+			"i": 1511,
+			"l": "Morris dances (Music)",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1512,
+			"l": "Motets",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1513,
+			"l": "Motion comics",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1514,
+			"l": "Motion picture music",
+			"bt": [686, 930],
+			"nt": [89, 2195],
+			"d": 2,
+			"n": 2,
+			"f": 131090
+		},
+		{
+			"i": 1515,
+			"l": "Motion picture reviews",
+			"bt": [2010],
+			"nt": [1521],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 1516,
+			"l": "Motion pictures",
+			"bt": [2583],
+			"nt": [
+				0,
+				20,
+				70,
+				76,
+				85,
+				90,
+				100,
+				161,
+				238,
+				257,
+				299,
+				335,
+				339,
+				391,
+				414,
+				429,
+				454,
+				459,
+				485,
+				558,
+				590,
+				649,
+				747,
+				771,
+				779,
+				803,
+				806,
+				840,
+				844,
+				853,
+				854,
+				856,
+				859,
+				860,
+				862,
+				874,
+				875,
+				1042,
+				1055,
+				1124,
+				1156,
+				1217,
+				1229,
+				1281,
+				1345,
+				1352,
+				1374,
+				1428,
+				1461,
+				1504,
+				1518,
+				1519,
+				1535,
+				1549,
+				1571,
+				1591,
+				1631,
+				1636,
+				1648,
+				1672,
+				1714,
+				1717,
+				1745,
+				1798,
+				1801,
+				1850,
+				1867,
+				1874,
+				1881,
+				1895,
+				1903,
+				1986,
+				2024,
+				2043,
+				2062,
+				2070,
+				2095,
+				2144,
+				2185,
+				2188,
+				2196,
+				2230,
+				2279,
+				2284,
+				2295,
+				2313,
+				2321,
+				2330,
+				2346,
+				2349,
+				2382,
+				2439,
+				2440,
+				2459,
+				2511,
+				2534,
+				2598,
+				2619,
+				2655
+			],
+			"d": 1,
+			"n": 228,
+			"f": 131168
+		},
+		{
+			"i": 1517,
+			"l": "Motor vehicle sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1518,
+			"l": "Motorcycle films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1519,
+			"l": "Mountain films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1520,
+			"l": "Mouth music",
+			"bt": [899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1521,
+			"l": "Movie review television programs",
+			"bt": [1515, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1522,
+			"l": "Multilingual dictionaries",
+			"bt": [639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1523,
+			"l": "Multilingual works",
+			"bt": [],
+			"nt": [],
+			"d": 0,
+			"n": 0,
+			"f": 1
+		},
+		{
+			"i": 1524,
+			"l": "Multiples (Art)",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1525,
+			"l": "Mumblecore films",
+			"bt": [
+				844,
+				1124,
+				1352
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1526,
+			"l": "Mummers' plays",
+			"bt": [897],
+			"nt": [1769],
+			"d": 3,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1527,
+			"l": "Municipal ordinances",
+			"bt": [2306],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 1528,
+			"l": "Muqams",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1529,
+			"l": "Murgas",
+			"bt": [791, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1530,
+			"l": "Music",
+			"bt": [],
+			"nt": [
+				10,
+				122,
+				125,
+				379,
+				686,
+				804,
+				852,
+				899,
+				930,
+				986,
+				1091,
+				1100,
+				1114,
+				1119,
+				1147,
+				1206,
+				1435,
+				1483,
+				1538,
+				1544,
+				1586,
+				1600,
+				1794,
+				2076,
+				2091,
+				2092,
+				2117,
+				2246,
+				2254,
+				2379
+			],
+			"d": 0,
+			"n": 791,
+			"f": 131089
+		},
+		{
+			"i": 1531,
+			"l": "Music criticism and reviews",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1532,
+			"l": "Music posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 1533,
+			"l": "Music theater",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1534,
+			"l": "Music videos",
+			"bt": [2419, 2568],
+			"nt": [2036, 2581],
+			"d": 2,
+			"n": 2,
+			"f": 131170
+		},
+		{
+			"i": 1535,
+			"l": "Musical films",
+			"bt": [1516, 1541],
+			"nt": [2031, 2581],
+			"d": 3,
+			"n": 3,
+			"f": 131186
+		},
+		{
+			"i": 1536,
+			"l": "Musical games",
+			"bt": [930, 1886],
+			"nt": [1028, 2203],
+			"d": 2,
+			"n": 2,
+			"f": 131090
+		},
+		{
+			"i": 1537,
+			"l": "Musical parodies",
+			"bt": [1091],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1538,
+			"l": "Musical settings",
+			"bt": [1530],
+			"nt": [1861],
+			"d": 1,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1539,
+			"l": "Musical sketches",
+			"bt": [1600],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1540,
+			"l": "Musical texts",
+			"bt": [1326],
+			"nt": [
+				1795,
+				2077,
+				2244
+			],
+			"d": 1,
+			"n": 13,
+			"f": 8
+		},
+		{
+			"i": 1541,
+			"l": "Musicals",
+			"bt": [686],
+			"nt": [
+				239,
+				956,
+				1133,
+				1197,
+				1300,
+				1535,
+				2411
+			],
+			"d": 2,
+			"n": 10,
+			"f": 131088
+		},
+		{
+			"i": 1542,
+			"l": "Musique concrète",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1543,
+			"l": "Muwashshaḥāt",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1544,
+			"l": "Muğams",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1545,
+			"l": "Muʻāraḍāt",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1546,
+			"l": "Mystery and miracle plays",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1547,
+			"l": "Mythological comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1548,
+			"l": "Mythological fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1549,
+			"l": "Mythological films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1550,
+			"l": "Mythological plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1551,
+			"l": "Mythological poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1552,
+			"l": "Mythological television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1553,
+			"l": "Myths",
+			"bt": [898, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2058
+		},
+		{
+			"i": 1554,
+			"l": "Música sertaneja",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1555,
+			"l": "Naamyam",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1556,
+			"l": "Nagauta",
+			"bt": [
+				591,
+				1209,
+				2246
+			],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1557,
+			"l": "Naigryshi (Music)",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1558,
+			"l": "Narrative poetry",
+			"bt": [1771],
+			"nt": [
+				209,
+				755,
+				1274,
+				1606,
+				2072,
+				2316,
+				2467
+			],
+			"d": 2,
+			"n": 9,
+			"f": 16392
+		},
+		{
+			"i": 1559,
+			"l": "Narrative songs",
+			"bt": [2246],
+			"nt": [
+				180,
+				756,
+				1041,
+				1176,
+				1215,
+				1650
+			],
+			"d": 2,
+			"n": 8,
+			"f": 131088
+		},
+		{
+			"i": 1560,
+			"l": "National anthems",
+			"bt": [1709],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1561,
+			"l": "Nature fiction",
+			"bt": [843],
+			"nt": [716],
+			"d": 2,
+			"n": 2,
+			"f": 12
+		},
+		{
+			"i": 1562,
+			"l": "Nature films",
+			"bt": [2137],
+			"nt": [2625],
+			"d": 6,
+			"n": 1,
+			"f": 4325472
+		},
+		{
+			"i": 1563,
+			"l": "Nature poetry",
+			"bt": [1771],
+			"nt": [717],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 1564,
+			"l": "Nature sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1565,
+			"l": "Nature television programs",
+			"bt": [2139],
+			"nt": [2629],
+			"d": 6,
+			"n": 1,
+			"f": 4325472
+		},
+		{
+			"i": 1566,
+			"l": "Nautical charts",
+			"bt": [1394],
+			"nt": [1347, 1768],
+			"d": 2,
+			"n": 2,
+			"f": 2228512
+		},
+		{
+			"i": 1567,
+			"l": "Nautical drama",
+			"bt": [1437],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1568,
+			"l": "Negatives (Photographs)",
+			"bt": [1736],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1569,
+			"l": "New Age music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1570,
+			"l": "New jack swing (Music)",
+			"bt": [
+				933,
+				1048,
+				2016,
+				2253
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1571,
+			"l": "New wave films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1572,
+			"l": "New wave music",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1573,
+			"l": "New Year music",
+			"bt": [791],
+			"nt": [2056],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1574,
+			"l": "Newsletters",
+			"bt": [751, 2168],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1575,
+			"l": "Newspapers",
+			"bt": [2168],
+			"nt": [483],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 1576,
+			"l": "Newsreels",
+			"bt": [1137, 1591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1577,
+			"l": "Nhạ̣c tài tử",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1578,
+			"l": "Nigunim",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1579,
+			"l": "Nirat",
+			"bt": [
+				1350,
+				1356,
+				2475
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1580,
+			"l": "No wave (Music)",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1581,
+			"l": "Nocturnes (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1582,
+			"l": "Noir comics",
+			"bt": [621],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1583,
+			"l": "Noir fiction",
+			"bt": [622],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 1048588
+		},
+		{
+			"i": 1584,
+			"l": "Noir plays",
+			"bt": [624],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1585,
+			"l": "Noir poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1586,
+			"l": "Noise music",
+			"bt": [1530],
+			"nt": [
+				1587,
+				1588,
+				1813
+			],
+			"d": 1,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 1587,
+			"l": "Noise pop (Music)",
+			"bt": [69, 1586],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1588,
+			"l": "Noise rock (Music)",
+			"bt": [1586, 2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1589,
+			"l": "Nomenclatures",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1590,
+			"l": "Nonfiction comics",
+			"bt": [463],
+			"nt": [
+				234,
+				466,
+				660,
+				721,
+				1143,
+				2503,
+				2520
+			],
+			"d": 3,
+			"n": 8,
+			"f": 8232
+		},
+		{
+			"i": 1591,
+			"l": "Nonfiction films",
+			"bt": [1516],
+			"nt": [
+				24,
+				164,
+				211,
+				436,
+				661,
+				868,
+				869,
+				870,
+				1144,
+				1576,
+				1846,
+				2554
+			],
+			"d": 2,
+			"n": 31,
+			"f": 131168
+		},
+		{
+			"i": 1592,
+			"l": "Nonfiction novels",
+			"bt": [557, 843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4110
+		},
+		{
+			"i": 1593,
+			"l": "Nonfiction radio programs",
+			"bt": [1930],
+			"nt": [
+				165,
+				277,
+				481,
+				664,
+				995,
+				1145,
+				1370,
+				1869,
+				1875,
+				1905,
+				1913,
+				1917,
+				1921,
+				1924,
+				1939,
+				1941,
+				1960,
+				2268,
+				2361,
+				2555
+			],
+			"d": 2,
+			"n": 25,
+			"f": 132224
+		},
+		{
+			"i": 1594,
+			"l": "Nonfiction television programs",
+			"bt": [2419],
+			"nt": [
+				145,
+				155,
+				167,
+				212,
+				278,
+				665,
+				1146,
+				1371,
+				1521,
+				1848,
+				1868,
+				1870,
+				1876,
+				1961,
+				2269,
+				2362,
+				2393,
+				2394,
+				2396,
+				2400,
+				2402,
+				2412,
+				2429,
+				2522,
+				2556
+			],
+			"d": 2,
+			"n": 47,
+			"f": 131168
+		},
+		{
+			"i": 1595,
+			"l": "Nonsense fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1596,
+			"l": "Nonsense songs",
+			"bt": [1093],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1597,
+			"l": "Nonsense verse",
+			"bt": [1092],
+			"nt": [837, 1187],
+			"d": 3,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 1598,
+			"l": "Norteño (Music)",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1599,
+			"l": "Notated movement",
+			"bt": [654],
+			"nt": [595],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1600,
+			"l": "Notated music",
+			"bt": [1530],
+			"nt": [
+				1539,
+				1682,
+				1686,
+				2142,
+				2171,
+				2245,
+				2524
+			],
+			"d": 1,
+			"n": 21,
+			"f": 131088
+		},
+		{
+			"i": 1601,
+			"l": "Notebooks",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1602,
+			"l": "Novelizations",
+			"bt": [25, 1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 14
+		},
+		{
+			"i": 1603,
+			"l": "Novellas",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1604,
+			"l": "Novelle",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1605,
+			"l": "Novels",
+			"bt": [843],
+			"nt": [
+				360,
+				402,
+				1316,
+				1602,
+				1606,
+				1607,
+				2162,
+				2641
+			],
+			"d": 2,
+			"n": 8,
+			"f": 12
+		},
+		{
+			"i": 1606,
+			"l": "Novels in verse",
+			"bt": [1558, 1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16398
+		},
+		{
+			"i": 1607,
+			"l": "Novels of manners",
+			"bt": [1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1608,
+			"l": "Novelty films",
+			"bt": [2185],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1609,
+			"l": "Novelty songs",
+			"bt": [1093],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1610,
+			"l": "Nu jazz",
+			"bt": [730, 1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1611,
+			"l": "Nursery rhymes",
+			"bt": [1771],
+			"nt": [
+				59,
+				536,
+				575,
+				1199
+			],
+			"d": 2,
+			"n": 4,
+			"f": 16392
+		},
+		{
+			"i": 1612,
+			"l": "Nō music",
+			"bt": [125, 1122],
+			"nt": [2542],
+			"d": 3,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1613,
+			"l": "Nō plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1614,
+			"l": "Obereks (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1615,
+			"l": "Obituaries",
+			"bt": [475],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1616,
+			"l": "Observations",
+			"bt": [654, 1137],
+			"nt": [
+				1943,
+				1958,
+				2038
+			],
+			"d": 1,
+			"n": 3,
+			"f": 2097154
+		},
+		{
+			"i": 1617,
+			"l": "Occasional sermons",
+			"bt": [2170],
+			"nt": [
+				132,
+				192,
+				420,
+				714,
+				932,
+				1295,
+				1696,
+				2058,
+				2438,
+				2611,
+				2662
+			],
+			"d": 2,
+			"n": 12,
+			"f": 2048
+		},
+		{
+			"i": 1618,
+			"l": "Occasional speeches",
+			"bt": [2273],
+			"nt": [
+				788,
+				834,
+				1002
+			],
+			"d": 2,
+			"n": 3,
+			"f": 0
+		},
+		{
+			"i": 1619,
+			"l": "Occasional verse",
+			"bt": [1771],
+			"nt": [
+				157,
+				312,
+				476,
+				758,
+				766
+			],
+			"d": 2,
+			"n": 5,
+			"f": 16392
+		},
+		{
+			"i": 1620,
+			"l": "Odes",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1621,
+			"l": "Offertories (Music)",
+			"bt": [1853],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1622,
+			"l": "Office sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1623,
+			"l": "Official gazettes",
+			"bt": [
+				1137,
+				1272,
+				1719
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1624,
+			"l": "Oi music",
+			"bt": [1879],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1625,
+			"l": "Old-time music",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1626,
+			"l": "One-act operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1627,
+			"l": "One-act plays",
+			"bt": [684],
+			"nt": [2431],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1628,
+			"l": "Online discussion forums",
+			"bt": [654, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1629,
+			"l": "Online news",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1630,
+			"l": "Open form music",
+			"bt": [49],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1631,
+			"l": "Opera films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1632,
+			"l": "Opera posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 1633,
+			"l": "Opera programs",
+			"bt": [1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1634,
+			"l": "Opera television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1635,
+			"l": "Operas",
+			"bt": [686],
+			"nt": [
+				240,
+				374,
+				957,
+				1301,
+				1626,
+				1925,
+				2109,
+				2132,
+				2413,
+				2471,
+				2495
+			],
+			"d": 2,
+			"n": 11,
+			"f": 131088
+		},
+		{
+			"i": 1636,
+			"l": "Operetta films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1637,
+			"l": "Oracle cards",
+			"bt": [751, 1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 1638,
+			"l": "Oral histories",
+			"bt": [1163],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1639,
+			"l": "Oratorios",
+			"bt": [125, 686],
+			"nt": [2163],
+			"d": 2,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1640,
+			"l": "Order-books",
+			"bt": [1464],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1641,
+			"l": "Orders in council",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1642,
+			"l": "Organ masses",
+			"bt": [125, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1643,
+			"l": "Organa",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1644,
+			"l": "Original cast recordings",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1645,
+			"l": "Orthros (Music)",
+			"bt": [1510],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1646,
+			"l": "Outline maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1647,
+			"l": "Outlines and syllabi",
+			"bt": [619, 1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194306
+		},
+		{
+			"i": 1648,
+			"l": "Outtakes",
+			"bt": [
+				793,
+				1516,
+				2419
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 1649,
+			"l": "Overtures",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1650,
+			"l": "P'ansori",
+			"bt": [
+				686,
+				904,
+				1559
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1651,
+			"l": "Pachangas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1652,
+			"l": "Pageants",
+			"bt": [1053],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1653,
+			"l": "Paintings",
+			"bt": [123],
+			"nt": [1697, 2604],
+			"d": 2,
+			"n": 2,
+			"f": 32
+		},
+		{
+			"i": 1654,
+			"l": "Palindromes",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1655,
+			"l": "Palinodes",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1656,
+			"l": "Palos (Music)",
+			"bt": [899, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1657,
+			"l": "Pamphlets",
+			"bt": [751],
+			"nt": [2479],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1658,
+			"l": "Panchatantra stories",
+			"bt": [808],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 4194316
+		},
+		{
+			"i": 1659,
+			"l": "Panel discussions",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1660,
+			"l": "Panorama books",
+			"bt": [11],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1661,
+			"l": "Pantomimes (Music)",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1662,
+			"l": "Pantoums",
+			"bt": [1892],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1663,
+			"l": "Papal blessings",
+			"bt": [1664],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2099200
+		},
+		{
+			"i": 1664,
+			"l": "Papal documents",
+			"bt": [1967, 1988],
+			"nt": [1663, 1665],
+			"d": 2,
+			"n": 2,
+			"f": 2099202
+		},
+		{
+			"i": 1665,
+			"l": "Papal encyclicals",
+			"bt": [1664, 1703],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 1666,
+			"l": "Paper dolls",
+			"bt": [1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1667,
+			"l": "Papyri (Manuscripts)",
+			"bt": [1392],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1668,
+			"l": "Parables",
+			"bt": [795],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194312
+		},
+		{
+			"i": 1669,
+			"l": "Paranormal comics",
+			"bt": [463],
+			"nt": [
+				975,
+				2547,
+				2612,
+				2632,
+				2669
+			],
+			"d": 3,
+			"n": 5,
+			"f": 8232
+		},
+		{
+			"i": 1670,
+			"l": "Paranormal drama",
+			"bt": [684],
+			"nt": [
+				977,
+				2548,
+				2613,
+				2670
+			],
+			"d": 2,
+			"n": 4,
+			"f": 32776
+		},
+		{
+			"i": 1671,
+			"l": "Paranormal fiction",
+			"bt": [843],
+			"nt": [
+				979,
+				1674,
+				2549,
+				2614,
+				2633,
+				2671
+			],
+			"d": 2,
+			"n": 6,
+			"f": 12
+		},
+		{
+			"i": 1672,
+			"l": "Paranormal films",
+			"bt": [1516],
+			"nt": [
+				976,
+				1036,
+				2550,
+				2615,
+				2634,
+				2672
+			],
+			"d": 2,
+			"n": 6,
+			"f": 131168
+		},
+		{
+			"i": 1673,
+			"l": "Paranormal poetry",
+			"bt": [1771],
+			"nt": [978],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 1674,
+			"l": "Paranormal romance fiction",
+			"bt": [1671, 2042],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 262158
+		},
+		{
+			"i": 1675,
+			"l": "Paranormal television programs",
+			"bt": [2419],
+			"nt": [
+				980,
+				1037,
+				2551,
+				2616,
+				2635,
+				2673
+			],
+			"d": 2,
+			"n": 6,
+			"f": 131168
+		},
+		{
+			"i": 1676,
+			"l": "Paraphrases",
+			"bt": [619],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1677,
+			"l": "Parashiyot ha-shavuʻa",
+			"bt": [793, 1988],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2050
+		},
+		{
+			"i": 1678,
+			"l": "Parking maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1679,
+			"l": "Parodies (Literature)",
+			"bt": [1326],
+			"nt": [304],
+			"d": 1,
+			"n": 2,
+			"f": 8
+		},
+		{
+			"i": 1680,
+			"l": "Parody films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1681,
+			"l": "Parody television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1682,
+			"l": "Part books",
+			"bt": [1600],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1683,
+			"l": "Part songs",
+			"bt": [373, 2246],
+			"nt": [
+				186,
+				308,
+				329,
+				334,
+				741,
+				924,
+				985,
+				1369,
+				1512,
+				2060,
+				2573,
+				2577
+			],
+			"d": 3,
+			"n": 12,
+			"f": 131090
+		},
+		{
+			"i": 1684,
+			"l": "Participatory drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1685,
+			"l": "Partimenti",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1686,
+			"l": "Parts (Music)",
+			"bt": [1600],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1687,
+			"l": "Pasillos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1688,
+			"l": "Paso dobles (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1689,
+			"l": "Passacaglias",
+			"bt": [2553],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1690,
+			"l": "Passamezzos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1691,
+			"l": "Passenger lists",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1692,
+			"l": "Passepieds (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1693,
+			"l": "Passion plays",
+			"bt": [226],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1694,
+			"l": "Passover fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1695,
+			"l": "Passover music",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1696,
+			"l": "Passover sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 1697,
+			"l": "Pastels (Visual works)",
+			"bt": [690, 1653],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 1698,
+			"l": "Pasticcios (Music)",
+			"bt": [125, 686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1699,
+			"l": "Pastiches (Literature)",
+			"bt": [1326],
+			"nt": [363],
+			"d": 1,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 1700,
+			"l": "Pastoral drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1701,
+			"l": "Pastoral elegies",
+			"bt": [731, 1705],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1702,
+			"l": "Pastoral fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1703,
+			"l": "Pastoral letters and charges",
+			"bt": [306, 1988],
+			"nt": [1665],
+			"d": 4,
+			"n": 1,
+			"f": 2099202
+		},
+		{
+			"i": 1704,
+			"l": "Pastoral music",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1705,
+			"l": "Pastoral poetry",
+			"bt": [1771],
+			"nt": [
+				1701,
+				1707,
+				1996
+			],
+			"d": 2,
+			"n": 3,
+			"f": 16392
+		},
+		{
+			"i": 1706,
+			"l": "Pastorellas (Music)",
+			"bt": [415, 2076],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1707,
+			"l": "Pastourelles",
+			"bt": [1356, 1705],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1708,
+			"l": "Patents",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 1709,
+			"l": "Patriotic music",
+			"bt": [930],
+			"nt": [1560, 2301],
+			"d": 2,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1710,
+			"l": "Pattern books",
+			"bt": [1142, 1751],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194338
+		},
+		{
+			"i": 1711,
+			"l": "Pattern poetry",
+			"bt": [2582],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16424
+		},
+		{
+			"i": 1712,
+			"l": "Patterns (Instructional works)",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1713,
+			"l": "Pavans (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1714,
+			"l": "Peep shows (Motion pictures)",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1715,
+			"l": "Penitential psalms (Music)",
+			"bt": [1861],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1716,
+			"l": "Pentecost Festival music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1717,
+			"l": "Peplum films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1718,
+			"l": "Pericopes",
+			"bt": [793],
+			"nt": [1276],
+			"d": 2,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1719,
+			"l": "Periodicals",
+			"bt": [2168],
+			"nt": [
+				191,
+				291,
+				772,
+				1273,
+				1329,
+				1623,
+				2533,
+				2668
+			],
+			"d": 2,
+			"n": 8,
+			"f": 2097152
+		},
+		{
+			"i": 1720,
+			"l": "Perpetual calendars",
+			"bt": [313],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1721,
+			"l": "Personal correspondence",
+			"bt": [531],
+			"nt": [398, 1349],
+			"d": 3,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 1722,
+			"l": "Personal narratives",
+			"bt": [557, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2101250
+		},
+		{
+			"i": 1723,
+			"l": "Personal recordings",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1724,
+			"l": "Personals (Advertisements)",
+			"bt": [30],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1725,
+			"l": "Peyote songs",
+			"bt": [
+				791,
+				2076,
+				2246
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1726,
+			"l": "Peşrevs",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1727,
+			"l": "Pharmacopoeias",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1728,
+			"l": "Philadelphia soul (Music)",
+			"bt": [2253],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1729,
+			"l": "Philosophical fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1730,
+			"l": "Philosophical poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1731,
+			"l": "Phlēng thao",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1732,
+			"l": "Phonetic transcriptions",
+			"bt": [1137, 1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 6291458
+		},
+		{
+			"i": 1733,
+			"l": "Photicular books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1734,
+			"l": "Photobooks",
+			"bt": [1113],
+			"nt": [1344],
+			"d": 2,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 1735,
+			"l": "Photogrammetric maps",
+			"bt": [2474],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1736,
+			"l": "Photographs",
+			"bt": [2583],
+			"nt": [
+				32,
+				662,
+				1568,
+				2158
+			],
+			"d": 1,
+			"n": 5,
+			"f": 32
+		},
+		{
+			"i": 1737,
+			"l": "Photomaps",
+			"bt": [32, 1394],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228514
+		},
+		{
+			"i": 1738,
+			"l": "Photomontages",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1739,
+			"l": "Phrase books",
+			"bt": [1142, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 6291458
+		},
+		{
+			"i": 1740,
+			"l": "Physical maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1741,
+			"l": "Piano scores",
+			"bt": [122, 2142],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1742,
+			"l": "Pibrochs",
+			"bt": [2553],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1743,
+			"l": "Picaresque drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1744,
+			"l": "Picaresque fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1745,
+			"l": "Picaresque films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1746,
+			"l": "Pictorial maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1747,
+			"l": "Picture books",
+			"bt": [1113],
+			"nt": [
+				58,
+				200,
+				2642
+			],
+			"d": 2,
+			"n": 3,
+			"f": 65568
+		},
+		{
+			"i": 1748,
+			"l": "Picture dictionaries",
+			"bt": [639, 1113],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1749,
+			"l": "Picture discs (Sound recordings)",
+			"bt": [1751, 2259],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1058
+		},
+		{
+			"i": 1750,
+			"l": "Picture puzzles",
+			"bt": [1886, 2583],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 1751,
+			"l": "Pictures",
+			"bt": [2583],
+			"nt": [
+				341,
+				350,
+				1710,
+				1749
+			],
+			"d": 1,
+			"n": 6,
+			"f": 32
+		},
+		{
+			"i": 1752,
+			"l": "Pilgrimage guides",
+			"bt": [1018, 1988],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 1753,
+			"l": "Pilgrimage music",
+			"bt": [791],
+			"nt": [2182, 2336],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1754,
+			"l": "Pilot guides",
+			"bt": [1029],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291456
+		},
+		{
+			"i": 1755,
+			"l": "Ping ju",
+			"bt": [125, 686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1756,
+			"l": "Ping shu",
+			"bt": [898, 1495],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1757,
+			"l": "Pirate captivity narratives",
+			"bt": [156],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2101248
+		},
+		{
+			"i": 1758,
+			"l": "Pirate comics",
+			"bt": [18],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1759,
+			"l": "Pirate films",
+			"bt": [2349],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1760,
+			"l": "Pishdarāmads",
+			"bt": [606],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1761,
+			"l": "Pixilated animation films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1762,
+			"l": "Piyutim",
+			"bt": [1102],
+			"nt": [163, 1420],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1763,
+			"l": "Platforms (Politics)",
+			"bt": [1773],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1764,
+			"l": "Playbills (Posters)",
+			"bt": [1810, 1847],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1765,
+			"l": "Playing cards",
+			"bt": [751, 1113],
+			"nt": [2375],
+			"d": 2,
+			"n": 1,
+			"f": 34
+		},
+		{
+			"i": 1766,
+			"l": "Plenas",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1767,
+			"l": "Plot summaries",
+			"bt": [619, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1768,
+			"l": "Plotting charts",
+			"bt": [34, 1566],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228514
+		},
+		{
+			"i": 1769,
+			"l": "Plough Monday plays",
+			"bt": [1526],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1770,
+			"l": "Podcasts",
+			"bt": [2259, 2568],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 1058
+		},
+		{
+			"i": 1771,
+			"l": "Poetry",
+			"bt": [1326],
+			"nt": [
+				48,
+				77,
+				87,
+				121,
+				179,
+				201,
+				206,
+				230,
+				241,
+				256,
+				262,
+				282,
+				363,
+				418,
+				427,
+				613,
+				615,
+				620,
+				633,
+				642,
+				663,
+				669,
+				677,
+				681,
+				713,
+				715,
+				727,
+				738,
+				764,
+				773,
+				805,
+				829,
+				901,
+				914,
+				922,
+				925,
+				973,
+				988,
+				990,
+				997,
+				1008,
+				1027,
+				1056,
+				1075,
+				1092,
+				1097,
+				1105,
+				1110,
+				1115,
+				1167,
+				1179,
+				1196,
+				1212,
+				1222,
+				1237,
+				1253,
+				1258,
+				1260,
+				1266,
+				1313,
+				1317,
+				1319,
+				1350,
+				1356,
+				1359,
+				1361,
+				1409,
+				1456,
+				1500,
+				1543,
+				1545,
+				1551,
+				1558,
+				1563,
+				1585,
+				1611,
+				1619,
+				1655,
+				1673,
+				1705,
+				1730,
+				1781,
+				1823,
+				1855,
+				1889,
+				1892,
+				1896,
+				1989,
+				2011,
+				2014,
+				2051,
+				2053,
+				2059,
+				2134,
+				2150,
+				2167,
+				2173,
+				2174,
+				2194,
+				2209,
+				2211,
+				2233,
+				2258,
+				2278,
+				2286,
+				2318,
+				2371,
+				2432,
+				2475,
+				2514,
+				2545,
+				2574,
+				2575,
+				2582,
+				2599,
+				2663
+			],
+			"d": 1,
+			"n": 198,
+			"f": 16392
+		},
+		{
+			"i": 1772,
+			"l": "Poetry readings",
+			"bt": [1325],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1773,
+			"l": "Polemics",
+			"bt": [654],
+			"nt": [1763],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1774,
+			"l": "Police films",
+			"bt": [561],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1775,
+			"l": "Policy briefs",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1776,
+			"l": "Political cartoons",
+			"bt": [350],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1777,
+			"l": "Political comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1778,
+			"l": "Political fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1779,
+			"l": "Political films",
+			"bt": [844],
+			"nt": [514],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 1780,
+			"l": "Political plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1781,
+			"l": "Political poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1782,
+			"l": "Political posters",
+			"bt": [1810, 1847],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1783,
+			"l": "Political radio commercials",
+			"bt": [1914],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2229376
+		},
+		{
+			"i": 1784,
+			"l": "Political television commercials",
+			"bt": [2401],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228320
+		},
+		{
+			"i": 1785,
+			"l": "Political television programs",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1786,
+			"l": "Polka-mazurkas (Music)",
+			"bt": [1419, 1788],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1787,
+			"l": "Polkabilly music",
+			"bt": [539, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1788,
+			"l": "Polkas (Music)",
+			"bt": [591],
+			"nt": [1786, 2126],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1789,
+			"l": "Polonaises (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1790,
+			"l": "Polskas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1791,
+			"l": "Polyphonic chansons",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1792,
+			"l": "Polyphonic Lieder",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1793,
+			"l": "Pop-up books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1794,
+			"l": "Popular music",
+			"bt": [1530],
+			"nt": [
+				37,
+				41,
+				114,
+				172,
+				175,
+				189,
+				210,
+				216,
+				220,
+				231,
+				261,
+				271,
+				283,
+				295,
+				311,
+				316,
+				321,
+				326,
+				357,
+				361,
+				368,
+				375,
+				376,
+				388,
+				405,
+				425,
+				539,
+				552,
+				574,
+				599,
+				600,
+				601,
+				652,
+				730,
+				740,
+				912,
+				920,
+				927,
+				929,
+				933,
+				941,
+				994,
+				1019,
+				1020,
+				1046,
+				1048,
+				1083,
+				1084,
+				1103,
+				1172,
+				1175,
+				1178,
+				1186,
+				1207,
+				1219,
+				1221,
+				1223,
+				1225,
+				1230,
+				1235,
+				1236,
+				1247,
+				1248,
+				1264,
+				1348,
+				1353,
+				1355,
+				1378,
+				1382,
+				1385,
+				1387,
+				1398,
+				1408,
+				1421,
+				1422,
+				1423,
+				1474,
+				1490,
+				1491,
+				1509,
+				1529,
+				1554,
+				1569,
+				1598,
+				1625,
+				1819,
+				1946,
+				1947,
+				1950,
+				1953,
+				1956,
+				1962,
+				1975,
+				1992,
+				2016,
+				2033,
+				2039,
+				2066,
+				2086,
+				2175,
+				2206,
+				2214,
+				2239,
+				2252,
+				2253,
+				2310,
+				2348,
+				2356,
+				2384,
+				2458,
+				2518,
+				2523,
+				2526,
+				2546,
+				2589,
+				2677,
+				2678
+			],
+			"d": 1,
+			"n": 245,
+			"f": 131088
+		},
+		{
+			"i": 1795,
+			"l": "Popular music lyrics",
+			"bt": [1540],
+			"nt": [
+				538,
+				1049,
+				2032
+			],
+			"d": 2,
+			"n": 4,
+			"f": 8
+		},
+		{
+			"i": 1796,
+			"l": "Popular music radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1797,
+			"l": "Popular works",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1798,
+			"l": "Populist films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1799,
+			"l": "Pornographic comics",
+			"bt": [463],
+			"nt": [726],
+			"d": 3,
+			"n": 1,
+			"f": 8232
+		},
+		{
+			"i": 1800,
+			"l": "Pornographic fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1801,
+			"l": "Pornographic films",
+			"bt": [1516],
+			"nt": [2223],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 1802,
+			"l": "Pornographic television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1803,
+			"l": "Porros (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1804,
+			"l": "Portal fantasy fiction",
+			"bt": [827],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 1805,
+			"l": "Portolan charts",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1806,
+			"l": "Portraits",
+			"bt": [2583],
+			"nt": [2157],
+			"d": 1,
+			"n": 2,
+			"f": 32
+		},
+		{
+			"i": 1807,
+			"l": "Post-punk music",
+			"bt": [1879],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1808,
+			"l": "Post-rock music",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1809,
+			"l": "Postcards",
+			"bt": [751, 1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 1810,
+			"l": "Posters",
+			"bt": [1113, 1137],
+			"nt": [
+				31,
+				592,
+				749,
+				798,
+				858,
+				969,
+				1532,
+				1632,
+				1764,
+				1782,
+				1851,
+				1871,
+				2080,
+				2287,
+				2504,
+				2594,
+				2600,
+				2627
+			],
+			"d": 2,
+			"n": 19,
+			"f": 2097186
+		},
+		{
+			"i": 1811,
+			"l": "Postludes (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1812,
+			"l": "Pottery",
+			"bt": [2583],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 1813,
+			"l": "Power electronics (Music)",
+			"bt": [1132, 1586],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1814,
+			"l": "Power metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1815,
+			"l": "Powwow songs",
+			"bt": [791, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1816,
+			"l": "Prank telephone calls",
+			"bt": [462],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1817,
+			"l": "Prayers",
+			"bt": [1988],
+			"nt": [1321, 2055],
+			"d": 1,
+			"n": 2,
+			"f": 2048
+		},
+		{
+			"i": 1818,
+			"l": "Prefatory works",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1819,
+			"l": "Pregones (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1820,
+			"l": "Preludes (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1821,
+			"l": "Press conferences",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1822,
+			"l": "Press releases",
+			"bt": [751, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 1823,
+			"l": "Priamels",
+			"bt": [760, 1771],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2113546
+		},
+		{
+			"i": 1824,
+			"l": "Price lists",
+			"bt": [2085],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1825,
+			"l": "Primary sources",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1826,
+			"l": "Prints",
+			"bt": [2583],
+			"nt": [
+				1149,
+				1327,
+				1981,
+				2021,
+				2143
+			],
+			"d": 1,
+			"n": 10,
+			"f": 32
+		},
+		{
+			"i": 1827,
+			"l": "Prison fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1828,
+			"l": "Prison films",
+			"bt": [561],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1829,
+			"l": "Prison television programs",
+			"bt": [2404],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1830,
+			"l": "Privileges and immunities",
+			"bt": [1272, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1831,
+			"l": "Problem plays",
+			"bt": [684],
+			"nt": [655],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1832,
+			"l": "Problems and exercises",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1833,
+			"l": "Processionals (Service books)",
+			"bt": [2171],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 1834,
+			"l": "Proclamations",
+			"bt": [1137, 1272],
+			"nt": [2061],
+			"d": 1,
+			"n": 1,
+			"f": 2228738
+		},
+		{
+			"i": 1835,
+			"l": "Production music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1836,
+			"l": "Program music",
+			"bt": [125],
+			"nt": [2351],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1837,
+			"l": "Programmed instructional materials",
+			"bt": [2156],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 1838,
+			"l": "Programs (Publications)",
+			"bt": [751, 1137],
+			"nt": [
+				500,
+				593,
+				841,
+				1444,
+				1633,
+				1929,
+				2441
+			],
+			"d": 1,
+			"n": 7,
+			"f": 2097154
+		},
+		{
+			"i": 1839,
+			"l": "Progressive metal (Music)",
+			"bt": [1040, 1840],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1840,
+			"l": "Progressive rock (Music)",
+			"bt": [2033],
+			"nt": [
+				1243,
+				1415,
+				1839,
+				2266
+			],
+			"d": 3,
+			"n": 4,
+			"f": 131088
+		},
+		{
+			"i": 1841,
+			"l": "Prokeimena",
+			"bt": [1853],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1842,
+			"l": "Proletarian fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1843,
+			"l": "Prologues and epilogues",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1844,
+			"l": "Promos (Radio commercials)",
+			"bt": [1914],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2229376
+		},
+		{
+			"i": 1845,
+			"l": "Promos (Television commercials)",
+			"bt": [2401],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228320
+		},
+		{
+			"i": 1846,
+			"l": "Promotional films",
+			"bt": [1591, 1847],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1847,
+			"l": "Promotional materials",
+			"bt": [1137],
+			"nt": [
+				30,
+				319,
+				862,
+				1114,
+				1344,
+				1424,
+				1764,
+				1782,
+				1846,
+				1848,
+				1850,
+				1851,
+				1852,
+				1874,
+				1931,
+				1932,
+				2422,
+				2504
+			],
+			"d": 1,
+			"n": 31,
+			"f": 2097152
+		},
+		{
+			"i": 1848,
+			"l": "Promotional television programs",
+			"bt": [1594, 1847],
+			"nt": [1136],
+			"d": 3,
+			"n": 1,
+			"f": 2228322
+		},
+		{
+			"i": 1849,
+			"l": "Promptbooks",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 1850,
+			"l": "Propaganda films",
+			"bt": [1516, 1847],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1851,
+			"l": "Propaganda posters",
+			"bt": [1810, 1847],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1852,
+			"l": "Propaganda television programs",
+			"bt": [1847, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1853,
+			"l": "Propers (Music)",
+			"bt": [
+				379,
+				791,
+				2076
+			],
+			"nt": [
+				54,
+				1e3,
+				1165,
+				1621,
+				1841,
+				2499
+			],
+			"d": 3,
+			"n": 6,
+			"f": 131090
+		},
+		{
+			"i": 1854,
+			"l": "Prophecies",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1855,
+			"l": "Prose poems",
+			"bt": [1771],
+			"nt": [1026, 1395],
+			"d": 2,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 1856,
+			"l": "Prospectuses",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1857,
+			"l": "Prostopinije",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1858,
+			"l": "Prosulas (Music)",
+			"bt": [1011],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1859,
+			"l": "Protest songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1860,
+			"l": "Psalms",
+			"bt": [1989, 2077],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1861,
+			"l": "Psalms (Music)",
+			"bt": [1538, 2076],
+			"nt": [1715],
+			"d": 2,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1862,
+			"l": "Psalters",
+			"bt": [627, 1330],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 6293506
+		},
+		{
+			"i": 1863,
+			"l": "Psychedelic rock music",
+			"bt": [2033],
+			"nt": [2266, 2314],
+			"d": 3,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1864,
+			"l": "Psychobilly music",
+			"bt": [1879, 2037],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1865,
+			"l": "Psychological comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 1866,
+			"l": "Psychological fiction",
+			"bt": [843],
+			"nt": [2320],
+			"d": 2,
+			"n": 1,
+			"f": 12
+		},
+		{
+			"i": 1867,
+			"l": "Psychological films",
+			"bt": [1516],
+			"nt": [2453],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 1868,
+			"l": "Public access television programs",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1869,
+			"l": "Public affairs radio programs",
+			"bt": [1137, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1870,
+			"l": "Public affairs television programs",
+			"bt": [1137, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1871,
+			"l": "Public health posters",
+			"bt": [1137, 1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 1872,
+			"l": "Public health surveillance reports",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1873,
+			"l": "Public opinion polls",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1874,
+			"l": "Public service announcements (Motion pictures)",
+			"bt": [1516, 1847],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1875,
+			"l": "Public service radio programs",
+			"bt": [1137, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1876,
+			"l": "Public service television programs",
+			"bt": [1137, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 1877,
+			"l": "Publishers' catalogs",
+			"bt": [2085],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1878,
+			"l": "Punk films",
+			"bt": [2031, 2330],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131186
+		},
+		{
+			"i": 1879,
+			"l": "Punk rock music",
+			"bt": [69],
+			"nt": [
+				555,
+				612,
+				902,
+				1034,
+				1624,
+				1807,
+				1864,
+				2207,
+				2210
+			],
+			"d": 4,
+			"n": 13,
+			"f": 131088
+		},
+		{
+			"i": 1880,
+			"l": "Puns",
+			"bt": [1087],
+			"nt": [1231],
+			"d": 2,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1881,
+			"l": "Puppet films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1882,
+			"l": "Puppet plays",
+			"bt": [684],
+			"nt": [2179],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 1883,
+			"l": "Puppet television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1884,
+			"l": "Purim music",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1885,
+			"l": "Purim plays",
+			"bt": [226, 897],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1886,
+			"l": "Puzzles and games",
+			"bt": [1970],
+			"nt": [
+				148,
+				265,
+				340,
+				382,
+				527,
+				568,
+				723,
+				1185,
+				1224,
+				1342,
+				1418,
+				1536,
+				1654,
+				1750,
+				2018,
+				2040,
+				2334,
+				2566,
+				2639
+			],
+			"d": 1,
+			"n": 26,
+			"f": 0
+		},
+		{
+			"i": 1887,
+			"l": "Qawwālī",
+			"bt": [
+				1047,
+				2076,
+				2246
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1888,
+			"l": "Qaṣīdas",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1889,
+			"l": "Qu (Poetry)",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1890,
+			"l": "Quadrangle maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1891,
+			"l": "Quadrilles (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1892,
+			"l": "Quatrains",
+			"bt": [1771],
+			"nt": [1662, 2100],
+			"d": 2,
+			"n": 2,
+			"f": 16392
+		},
+		{
+			"i": 1893,
+			"l": "Queer comics",
+			"bt": [463],
+			"nt": [
+				119,
+				133,
+				246,
+				952,
+				961,
+				1157,
+				1296,
+				2491
+			],
+			"d": 3,
+			"n": 8,
+			"f": 8232
+		},
+		{
+			"i": 1894,
+			"l": "Queer fiction",
+			"bt": [843],
+			"nt": [
+				120,
+				134,
+				248,
+				954,
+				962,
+				1158,
+				1298,
+				2493
+			],
+			"d": 2,
+			"n": 8,
+			"f": 12
+		},
+		{
+			"i": 1895,
+			"l": "Queer films",
+			"bt": [1516],
+			"nt": [
+				249,
+				955,
+				1159,
+				1299,
+				2494
+			],
+			"d": 2,
+			"n": 5,
+			"f": 131168
+		},
+		{
+			"i": 1896,
+			"l": "Queer poetry",
+			"bt": [1771],
+			"nt": [
+				135,
+				250,
+				958,
+				1160,
+				1302,
+				2496
+			],
+			"d": 2,
+			"n": 6,
+			"f": 16392
+		},
+		{
+			"i": 1897,
+			"l": "Questionnaires",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1898,
+			"l": "Quicksteps (Marches)",
+			"bt": [591, 1396],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1899,
+			"l": "Quodlibets (Music)",
+			"bt": [125, 2246],
+			"nt": [741],
+			"d": 2,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1900,
+			"l": "Quotations",
+			"bt": [1973],
+			"nt": [1380],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 1901,
+			"l": "Qurʼan stories",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1902,
+			"l": "Qurʼanic recitations",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1903,
+			"l": "Race films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 1904,
+			"l": "Rachenitsas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1905,
+			"l": "Radio actualities",
+			"bt": [793, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 1906,
+			"l": "Radio adaptations",
+			"bt": [25, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 1907,
+			"l": "Radio airchecks",
+			"bt": [1930],
+			"nt": [2386, 2537],
+			"d": 2,
+			"n": 2,
+			"f": 132224
+		},
+		{
+			"i": 1908,
+			"l": "Radio announcements",
+			"bt": [1137, 1930],
+			"nt": [
+				1932,
+				1940,
+				1942
+			],
+			"d": 2,
+			"n": 3,
+			"f": 2229378
+		},
+		{
+			"i": 1909,
+			"l": "Radio anthologies",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1910,
+			"l": "Radio auditions",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1911,
+			"l": "Radio call-in shows",
+			"bt": [1941],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1912,
+			"l": "Radio comedies",
+			"bt": [1087, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 1913,
+			"l": "Radio commentaries",
+			"bt": [654, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 1914,
+			"l": "Radio commercials",
+			"bt": [30, 1930],
+			"nt": [
+				1783,
+				1844,
+				2200
+			],
+			"d": 3,
+			"n": 4,
+			"f": 2229378
+		},
+		{
+			"i": 1915,
+			"l": "Radio crime shows",
+			"bt": [1930],
+			"nt": [625],
+			"d": 2,
+			"n": 1,
+			"f": 132224
+		},
+		{
+			"i": 1916,
+			"l": "Radio docudramas",
+			"bt": [1137, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1917,
+			"l": "Radio field reports",
+			"bt": [1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1918,
+			"l": "Radio game shows",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1919,
+			"l": "Radio golf matches",
+			"bt": [1939],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1920,
+			"l": "Radio interviews",
+			"bt": [],
+			"nt": [2587],
+			"d": 0,
+			"n": 1,
+			"f": 1
+		},
+		{
+			"i": 1921,
+			"l": "Radio lectures",
+			"bt": [1277, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 4326530
+		},
+		{
+			"i": 1922,
+			"l": "Radio music",
+			"bt": [930],
+			"nt": [1925],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1923,
+			"l": "Radio news bulletins",
+			"bt": [1137, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1924,
+			"l": "Radio news programs",
+			"bt": [1137, 1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1925,
+			"l": "Radio operas",
+			"bt": [1635, 1922],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1926,
+			"l": "Radio outtakes",
+			"bt": [793, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 1927,
+			"l": "Radio plays",
+			"bt": [684, 1935],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 1928,
+			"l": "Radio program excerpts",
+			"bt": [793, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132226
+		},
+		{
+			"i": 1929,
+			"l": "Radio program schedules",
+			"bt": [1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1930,
+			"l": "Radio programs",
+			"bt": [2259],
+			"nt": [
+				29,
+				242,
+				393,
+				419,
+				438,
+				486,
+				540,
+				651,
+				724,
+				780,
+				845,
+				900,
+				1057,
+				1138,
+				1155,
+				1180,
+				1429,
+				1593,
+				1796,
+				1906,
+				1907,
+				1908,
+				1909,
+				1910,
+				1912,
+				1914,
+				1915,
+				1916,
+				1918,
+				1923,
+				1926,
+				1928,
+				1931,
+				1933,
+				1934,
+				1936,
+				1938,
+				1990,
+				2034,
+				2187,
+				2288,
+				2296,
+				2454,
+				2601,
+				2621
+			],
+			"d": 1,
+			"n": 85,
+			"f": 132224
+		},
+		{
+			"i": 1931,
+			"l": "Radio propaganda",
+			"bt": [1847, 1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1932,
+			"l": "Radio public service announcements",
+			"bt": [1847, 1908],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1933,
+			"l": "Radio quiz shows",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1934,
+			"l": "Radio rehearsals",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1935,
+			"l": "Radio scripts",
+			"bt": [654],
+			"nt": [1927],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 1936,
+			"l": "Radio serials",
+			"bt": [1930],
+			"nt": [1937],
+			"d": 2,
+			"n": 1,
+			"f": 132224
+		},
+		{
+			"i": 1937,
+			"l": "Radio soap operas",
+			"bt": [1936],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1938,
+			"l": "Radio specials",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1939,
+			"l": "Radio sports events",
+			"bt": [1593, 2288],
+			"nt": [1919],
+			"d": 3,
+			"n": 1,
+			"f": 132226
+		},
+		{
+			"i": 1940,
+			"l": "Radio station identifications",
+			"bt": [1137, 1908],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1941,
+			"l": "Radio talk shows",
+			"bt": [654, 1593],
+			"nt": [144, 1911],
+			"d": 3,
+			"n": 2,
+			"f": 132226
+		},
+		{
+			"i": 1942,
+			"l": "Radio underwriting announcements",
+			"bt": [1137, 1908],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 1943,
+			"l": "Radiosonde observations",
+			"bt": [1616],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1944,
+			"l": "Ragas",
+			"bt": [125],
+			"nt": [950, 2679],
+			"d": 2,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 1945,
+			"l": "Ragga (Music)",
+			"bt": [1953, 1975],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1946,
+			"l": "Ragtime music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1947,
+			"l": "Rai (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1948,
+			"l": "Railroad fiction",
+			"bt": [19],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 1949,
+			"l": "Railroad sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 1950,
+			"l": "Rake 'n' scrape (Music)",
+			"bt": [
+				591,
+				899,
+				1794
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1951,
+			"l": "Ramadan music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1952,
+			"l": "Rancheras",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1953,
+			"l": "Rap (Music)",
+			"bt": [1794],
+			"nt": [
+				286,
+				401,
+				566,
+				944,
+				991,
+				1012,
+				1945,
+				1976,
+				2501
+			],
+			"d": 2,
+			"n": 11,
+			"f": 131088
+		},
+		{
+			"i": 1954,
+			"l": "Rap lyrics",
+			"bt": [1049],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 1955,
+			"l": "Rappresentazioni sacre (Music)",
+			"bt": [686, 2076],
+			"nt": [2163],
+			"d": 2,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1956,
+			"l": "Rapso",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1957,
+			"l": "Raster data",
+			"bt": [971],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097408
+		},
+		{
+			"i": 1958,
+			"l": "Rawinsonde observations",
+			"bt": [1616],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1959,
+			"l": "Readers (Publications)",
+			"bt": [2436],
+			"nt": [1045],
+			"d": 2,
+			"n": 1,
+			"f": 4194304
+		},
+		{
+			"i": 1960,
+			"l": "Reality radio programs",
+			"bt": [1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 1961,
+			"l": "Reality television programs",
+			"bt": [1594],
+			"nt": [835, 1377],
+			"d": 3,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 1962,
+			"l": "Rebetika",
+			"bt": [
+				899,
+				1794,
+				2246
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1963,
+			"l": "Rebuses",
+			"bt": [2018],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 1964,
+			"l": "Rechtsbücher",
+			"bt": [578],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 1965,
+			"l": "Recipes",
+			"bt": [751, 1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194306
+		},
+		{
+			"i": 1966,
+			"l": "Recorded accompaniments",
+			"bt": [10, 2259],
+			"nt": [1221],
+			"d": 2,
+			"n": 1,
+			"f": 132114
+		},
+		{
+			"i": 1967,
+			"l": "Records (Documents)",
+			"bt": [1137],
+			"nt": [
+				12,
+				47,
+				86,
+				97,
+				127,
+				130,
+				158,
+				314,
+				362,
+				431,
+				505,
+				531,
+				572,
+				636,
+				849,
+				1079,
+				1112,
+				1129,
+				1139,
+				1140,
+				1151,
+				1173,
+				1283,
+				1464,
+				1478,
+				1601,
+				1664,
+				1691,
+				1830,
+				2213,
+				2464,
+				2509,
+				2510
+			],
+			"d": 1,
+			"n": 61,
+			"f": 2097152
+		},
+		{
+			"i": 1968,
+			"l": "Records and briefs",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 1969,
+			"l": "Recreational maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1970,
+			"l": "Recreational works",
+			"bt": [],
+			"nt": [
+				23,
+				1087,
+				1886
+			],
+			"d": 0,
+			"n": 125,
+			"f": 1
+		},
+		{
+			"i": 1971,
+			"l": "Redowas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1972,
+			"l": "Reels (Music)",
+			"bt": [591],
+			"nt": [2319],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 1973,
+			"l": "Reference works",
+			"bt": [1137],
+			"nt": [
+				57,
+				74,
+				79,
+				229,
+				313,
+				354,
+				386,
+				422,
+				432,
+				522,
+				639,
+				647,
+				737,
+				832,
+				878,
+				911,
+				960,
+				1018,
+				1029,
+				1035,
+				1126,
+				1346,
+				1589,
+				1727,
+				1739,
+				1900,
+				2001,
+				2113,
+				2300,
+				2305,
+				2357,
+				2358,
+				2466,
+				2482,
+				2516
+			],
+			"d": 1,
+			"n": 94,
+			"f": 2097152
+		},
+		{
+			"i": 1974,
+			"l": "Reformation Festival music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1975,
+			"l": "Reggae music",
+			"bt": [1794],
+			"nt": [
+				597,
+				695,
+				1945
+			],
+			"d": 2,
+			"n": 5,
+			"f": 131088
+		},
+		{
+			"i": 1976,
+			"l": "Reggaeton",
+			"bt": [597, 1953],
+			"nt": [1265],
+			"d": 4,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 1977,
+			"l": "Regimental histories",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 1978,
+			"l": "Registers (Lists)",
+			"bt": [1137],
+			"nt": [
+				611,
+				1405,
+				1407
+			],
+			"d": 1,
+			"n": 3,
+			"f": 2097152
+		},
+		{
+			"i": 1979,
+			"l": "Relaxation music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 1980,
+			"l": "Relief models",
+			"bt": [347, 1488],
+			"nt": [258, 644],
+			"d": 2,
+			"n": 2,
+			"f": 2097442
+		},
+		{
+			"i": 1981,
+			"l": "Relief prints",
+			"bt": [1826],
+			"nt": [
+				1318,
+				2637,
+				2638
+			],
+			"d": 2,
+			"n": 3,
+			"f": 32
+		},
+		{
+			"i": 1982,
+			"l": "Religious comics",
+			"bt": [463],
+			"nt": [223, 274],
+			"d": 3,
+			"n": 2,
+			"f": 8232
+		},
+		{
+			"i": 1983,
+			"l": "Religious commentaries",
+			"bt": [654, 1988],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2050
+		},
+		{
+			"i": 1984,
+			"l": "Religious drama",
+			"bt": [684],
+			"nt": [
+				159,
+				226,
+				275,
+				712,
+				789,
+				1032,
+				1331,
+				1481,
+				1507,
+				1546,
+				2073,
+				2377
+			],
+			"d": 2,
+			"n": 14,
+			"f": 32776
+		},
+		{
+			"i": 1985,
+			"l": "Religious fiction",
+			"bt": [843],
+			"nt": [
+				407,
+				1030,
+				2659,
+				2682,
+				2683
+			],
+			"d": 2,
+			"n": 5,
+			"f": 12
+		},
+		{
+			"i": 1986,
+			"l": "Religious films",
+			"bt": [1516],
+			"nt": [
+				225,
+				408,
+				1023
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 1987,
+			"l": "Religious inventories",
+			"bt": [354, 1988],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2099202
+		},
+		{
+			"i": 1988,
+			"l": "Religious materials",
+			"bt": [],
+			"nt": [
+				111,
+				112,
+				314,
+				356,
+				398,
+				423,
+				424,
+				559,
+				627,
+				838,
+				1024,
+				1112,
+				1121,
+				1232,
+				1330,
+				1384,
+				1405,
+				1407,
+				1492,
+				1493,
+				1553,
+				1664,
+				1677,
+				1703,
+				1752,
+				1817,
+				1983,
+				1987,
+				2078,
+				2170,
+				2171
+			],
+			"d": 0,
+			"n": 63,
+			"f": 2049
+		},
+		{
+			"i": 1989,
+			"l": "Religious poetry",
+			"bt": [1771],
+			"nt": [
+				628,
+				1332,
+				1860,
+				2057,
+				2561,
+				2661
+			],
+			"d": 2,
+			"n": 8,
+			"f": 16392
+		},
+		{
+			"i": 1990,
+			"l": "Religious radio programs",
+			"bt": [1930],
+			"nt": [410],
+			"d": 2,
+			"n": 1,
+			"f": 132224
+		},
+		{
+			"i": 1991,
+			"l": "Religious television programs",
+			"bt": [2419],
+			"nt": [228, 412],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 1992,
+			"l": "Remixes (Music)",
+			"bt": [
+				591,
+				1794,
+				2259
+			],
+			"nt": [1406],
+			"d": 3,
+			"n": 1,
+			"f": 132114
+		},
+		{
+			"i": 1993,
+			"l": "Remonstrances",
+			"bt": [1286],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 1994,
+			"l": "Remote-sensing images",
+			"bt": [
+				347,
+				1137,
+				2583
+			],
+			"nt": [32],
+			"d": 1,
+			"n": 2,
+			"f": 2097442
+		},
+		{
+			"i": 1995,
+			"l": "Remote-sensing maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 1996,
+			"l": "Renga",
+			"bt": [1317, 1705],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 1997,
+			"l": "Rengay",
+			"bt": [1317],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 1998,
+			"l": "Rengs",
+			"bt": [591, 606],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 1999,
+			"l": "Renku",
+			"bt": [1092, 1317],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 2e3,
+			"l": "Renshi",
+			"bt": [922, 1317],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 2001,
+			"l": "Repertories (Law)",
+			"bt": [1272, 1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2002,
+			"l": "Reproaches (Music)",
+			"bt": [1011, 1294],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2003,
+			"l": "Requiems",
+			"bt": [931, 1413],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2004,
+			"l": "Resolutions (Law)",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2005,
+			"l": "Responsa (Jewish law)",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2006,
+			"l": "Responses (Music)",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2007,
+			"l": "Restatements of the law",
+			"bt": [619, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131586
+		},
+		{
+			"i": 2008,
+			"l": "Revenge tragedies",
+			"bt": [2485],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2009,
+			"l": "Reverse dictionaries",
+			"bt": [639, 1126],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2010,
+			"l": "Reviews",
+			"bt": [1137],
+			"nt": [
+				279,
+				594,
+				1515,
+				2418,
+				2442
+			],
+			"d": 1,
+			"n": 9,
+			"f": 2097152
+		},
+		{
+			"i": 2011,
+			"l": "Revolutionary poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2012,
+			"l": "Revues",
+			"bt": [686],
+			"nt": [254, 1475],
+			"d": 2,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 2013,
+			"l": "Rhapsodies (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2014,
+			"l": "Rhopalic verse",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2015,
+			"l": "Rhyme royal",
+			"bt": [1110],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2016,
+			"l": "Rhythm and blues music",
+			"bt": [1794],
+			"nt": [
+				345,
+				679,
+				1570
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131088
+		},
+		{
+			"i": 2017,
+			"l": "Ricercars",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2018,
+			"l": "Riddles",
+			"bt": [1886],
+			"nt": [1963],
+			"d": 2,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 2019,
+			"l": "Rigaudons (Dance)",
+			"bt": [546, 896],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 2020,
+			"l": "Rigaudons (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2021,
+			"l": "Risographs",
+			"bt": [1826],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2022,
+			"l": "Ritterdrama",
+			"bt": [1053],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2023,
+			"l": "Road fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2024,
+			"l": "Road films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2025,
+			"l": "Road maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2026,
+			"l": "Road television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2027,
+			"l": "Road trip comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2028,
+			"l": "Robinsonades",
+			"bt": [2345],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2029,
+			"l": "Rock concert films",
+			"bt": [499],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2030,
+			"l": "Rock concert television programs",
+			"bt": [501],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2031,
+			"l": "Rock films",
+			"bt": [1535],
+			"nt": [1878],
+			"d": 4,
+			"n": 1,
+			"f": 131184
+		},
+		{
+			"i": 2032,
+			"l": "Rock lyrics",
+			"bt": [1795],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 2033,
+			"l": "Rock music",
+			"bt": [1794],
+			"nt": [
+				69,
+				263,
+				411,
+				461,
+				541,
+				906,
+				918,
+				948,
+				984,
+				1033,
+				1040,
+				1132,
+				1181,
+				1588,
+				1840,
+				1863,
+				2035,
+				2037,
+				2234,
+				2342,
+				2527,
+				2636
+			],
+			"d": 2,
+			"n": 66,
+			"f": 131088
+		},
+		{
+			"i": 2034,
+			"l": "Rock music radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2035,
+			"l": "Rock operas",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2036,
+			"l": "Rock videos",
+			"bt": [1534],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2037,
+			"l": "Rockabilly music",
+			"bt": [
+				261,
+				539,
+				2033
+			],
+			"nt": [1864],
+			"d": 3,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 2038,
+			"l": "Rocket observations",
+			"bt": [1616],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2039,
+			"l": "Rocksteady (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2040,
+			"l": "Role-playing games",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2041,
+			"l": "Romance comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2042,
+			"l": "Romance fiction",
+			"bt": [843],
+			"nt": [1674],
+			"d": 2,
+			"n": 1,
+			"f": 262156
+		},
+		{
+			"i": 2043,
+			"l": "Romance films",
+			"bt": [1516],
+			"nt": [2048],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2044,
+			"l": "Romance television programs",
+			"bt": [2419],
+			"nt": [2049],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2045,
+			"l": "Romances",
+			"bt": [1326],
+			"nt": [126],
+			"d": 1,
+			"n": 1,
+			"f": 8
+		},
+		{
+			"i": 2046,
+			"l": "Romances (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2047,
+			"l": "Romans à clef",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2048,
+			"l": "Romantic comedy films",
+			"bt": [459, 2043],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2049,
+			"l": "Romantic comedy television programs",
+			"bt": [2044, 2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2050,
+			"l": "Romantic plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2051,
+			"l": "Rondeaux",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2052,
+			"l": "Rondeaux (Formes fixes)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2053,
+			"l": "Rondels",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2054,
+			"l": "Rondos",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2055,
+			"l": "Rosaries (Prayer books)",
+			"bt": [627, 1817],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4196354
+		},
+		{
+			"i": 2056,
+			"l": "Rosh ha-Shanah music",
+			"bt": [1044, 1573],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2057,
+			"l": "Rosh ha-Shanah poetry",
+			"bt": [1989],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2058,
+			"l": "Rosh ha-Shanah sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 2059,
+			"l": "Roundels",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2060,
+			"l": "Rounds (Music)",
+			"bt": [327, 1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2061,
+			"l": "Royal ordinances",
+			"bt": [1834],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 2062,
+			"l": "Rubble films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2063,
+			"l": "Rubrics (Liturgical books)",
+			"bt": [1330],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 6293504
+		},
+		{
+			"i": 2064,
+			"l": "Rules and practices (Law)",
+			"bt": [1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131584
+		},
+		{
+			"i": 2065,
+			"l": "Rules and regulations",
+			"bt": [1137],
+			"nt": [2289],
+			"d": 1,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 2066,
+			"l": "Rumbas (Music)",
+			"bt": [591, 1794],
+			"nt": [1016],
+			"d": 3,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 2067,
+			"l": "Rune songs",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2068,
+			"l": "Rural comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2069,
+			"l": "Rural comedy television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2070,
+			"l": "Rushes (Motion pictures)",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2071,
+			"l": "Rushes (Television programs)",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2072,
+			"l": "Rímur",
+			"bt": [1558],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2073,
+			"l": "Rāsalīlā drama",
+			"bt": [589, 1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2074,
+			"l": "Sabbath music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2075,
+			"l": "Sacred dances",
+			"bt": [587],
+			"nt": [221],
+			"d": 1,
+			"n": 1,
+			"f": 0
+		},
+		{
+			"i": 2076,
+			"l": "Sacred music",
+			"bt": [1530],
+			"nt": [
+				28,
+				52,
+				73,
+				105,
+				131,
+				215,
+				325,
+				330,
+				331,
+				403,
+				440,
+				480,
+				507,
+				530,
+				656,
+				707,
+				761,
+				790,
+				816,
+				839,
+				994,
+				1011,
+				1102,
+				1109,
+				1252,
+				1267,
+				1294,
+				1322,
+				1413,
+				1453,
+				1480,
+				1510,
+				1642,
+				1643,
+				1656,
+				1706,
+				1716,
+				1725,
+				1853,
+				1857,
+				1861,
+				1887,
+				1902,
+				1951,
+				1955,
+				1974,
+				2006,
+				2074,
+				2182,
+				2191,
+				2199,
+				2336,
+				2353,
+				2513,
+				2579,
+				2660
+			],
+			"d": 1,
+			"n": 89,
+			"f": 131088
+		},
+		{
+			"i": 2077,
+			"l": "Sacred music texts",
+			"bt": [1540],
+			"nt": [1099, 1860],
+			"d": 2,
+			"n": 2,
+			"f": 8
+		},
+		{
+			"i": 2078,
+			"l": "Sacred works",
+			"bt": [1988],
+			"nt": [2327, 2456],
+			"d": 1,
+			"n": 2,
+			"f": 2048
+		},
+		{
+			"i": 2079,
+			"l": "Saetas",
+			"bt": [
+				886,
+				1062,
+				2246
+			],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2080,
+			"l": "Safety posters",
+			"bt": [1142, 1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291490
+		},
+		{
+			"i": 2081,
+			"l": "Safety regulations",
+			"bt": [27, 2300],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2082,
+			"l": "Sagas",
+			"bt": [1326],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 2083,
+			"l": "Saibara",
+			"bt": [939, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2084,
+			"l": "Sainetes (Music)",
+			"bt": [1153, 2666],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2085,
+			"l": "Sales catalogs",
+			"bt": [354],
+			"nt": [
+				143,
+				1824,
+				1877,
+				2481
+			],
+			"d": 3,
+			"n": 4,
+			"f": 2097152
+		},
+		{
+			"i": 2086,
+			"l": "Salsa (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2087,
+			"l": "Saltarellos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2088,
+			"l": "Saluang jo dendang",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2089,
+			"l": "Sambas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2090,
+			"l": "Sample books",
+			"bt": [30, 751],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2091,
+			"l": "Sampler albums (Sound recordings)",
+			"bt": [1530, 2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 132114
+		},
+		{
+			"i": 2092,
+			"l": "Samples (Music)",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2093,
+			"l": "Samurai comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2094,
+			"l": "Samurai fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2095,
+			"l": "Samurai films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2096,
+			"l": "Samurai television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2097,
+			"l": "Sandae drama",
+			"bt": [
+				589,
+				897,
+				2108
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2098,
+			"l": "Sanjo",
+			"bt": [899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2099,
+			"l": "Sannata drama",
+			"bt": [897],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2100,
+			"l": "Sapphics",
+			"bt": [1892],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2101,
+			"l": "Sarabandes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2102,
+			"l": "Sardanas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2103,
+			"l": "Sasŏl sijo",
+			"bt": [1092, 2194],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 2104,
+			"l": "Satirical comics",
+			"bt": [1088, 2108],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 2105,
+			"l": "Satirical drama",
+			"bt": [460, 2108],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2106,
+			"l": "Satirical fiction",
+			"bt": [1089, 2108],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 14
+		},
+		{
+			"i": 2107,
+			"l": "Satirical films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2108,
+			"l": "Satirical literature",
+			"bt": [1087, 1326],
+			"nt": [
+				209,
+				1484,
+				2097,
+				2104,
+				2105,
+				2106,
+				2562
+			],
+			"d": 2,
+			"n": 8,
+			"f": 10
+		},
+		{
+			"i": 2109,
+			"l": "Satirical operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2110,
+			"l": "Satirical songs",
+			"bt": [1093],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2111,
+			"l": "Satirical television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2112,
+			"l": "Satyr plays",
+			"bt": [205, 304],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2113,
+			"l": "Sayings",
+			"bt": [1973],
+			"nt": [
+				760,
+				990,
+				1284
+			],
+			"d": 2,
+			"n": 4,
+			"f": 2097152
+		},
+		{
+			"i": 2114,
+			"l": "Saz semaisi (Instrumental music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2115,
+			"l": "Scar literature",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2116,
+			"l": "Scat singing",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2117,
+			"l": "Scenarios (Music)",
+			"bt": [1530],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2118,
+			"l": "Scented books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2119,
+			"l": "Scherzos",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2120,
+			"l": "Schnaderhüpfel",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2121,
+			"l": "Scholia",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2122,
+			"l": "School comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2123,
+			"l": "School fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2124,
+			"l": "School songs",
+			"bt": [2246],
+			"nt": [56],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2125,
+			"l": "School yearbooks",
+			"bt": [2653],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2126,
+			"l": "Schottisches (Music)",
+			"bt": [1788],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2127,
+			"l": "Schrammelmusik",
+			"bt": [899],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2128,
+			"l": "Schüttelreims",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2129,
+			"l": "Science fiction",
+			"bt": [843],
+			"nt": [
+				39,
+				108,
+				583,
+				701,
+				1328,
+				2264,
+				2308,
+				2333,
+				2338,
+				2461
+			],
+			"d": 2,
+			"n": 10,
+			"f": 524300
+		},
+		{
+			"i": 2130,
+			"l": "Science fiction comics",
+			"bt": [463],
+			"nt": [
+				38,
+				106,
+				582,
+				700,
+				2263,
+				2307,
+				2460
+			],
+			"d": 3,
+			"n": 7,
+			"f": 8232
+		},
+		{
+			"i": 2131,
+			"l": "Science fiction films",
+			"bt": [844],
+			"nt": [
+				109,
+				584,
+				702,
+				2265,
+				2309,
+				2339,
+				2462
+			],
+			"d": 3,
+			"n": 7,
+			"f": 131168
+		},
+		{
+			"i": 2132,
+			"l": "Science fiction operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2133,
+			"l": "Science fiction plays",
+			"bt": [684],
+			"nt": [107, 703],
+			"d": 2,
+			"n": 2,
+			"f": 32776
+		},
+		{
+			"i": 2134,
+			"l": "Science fiction poetry",
+			"bt": [1771],
+			"nt": [40],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 2135,
+			"l": "Science fiction radio programs",
+			"bt": [845],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2136,
+			"l": "Science fiction television programs",
+			"bt": [846],
+			"nt": [
+				110,
+				704,
+				2341,
+				2463
+			],
+			"d": 3,
+			"n": 4,
+			"f": 131168
+		},
+		{
+			"i": 2137,
+			"l": "Science films",
+			"bt": [722],
+			"nt": [1562],
+			"d": 5,
+			"n": 2,
+			"f": 4325472
+		},
+		{
+			"i": 2138,
+			"l": "Science radio programs",
+			"bt": [724, 1145],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 4326530
+		},
+		{
+			"i": 2139,
+			"l": "Science television programs",
+			"bt": [725],
+			"nt": [1565],
+			"d": 5,
+			"n": 2,
+			"f": 4325472
+		},
+		{
+			"i": 2140,
+			"l": "Scientific notations",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2141,
+			"l": "Scorecards",
+			"bt": [751, 1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2142,
+			"l": "Scores",
+			"bt": [1600],
+			"nt": [
+				406,
+				815,
+				1148,
+				1741,
+				2585
+			],
+			"d": 2,
+			"n": 6,
+			"f": 131088
+		},
+		{
+			"i": 2143,
+			"l": "Screen prints",
+			"bt": [1826],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2144,
+			"l": "Screen tests",
+			"bt": [1516, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2145,
+			"l": "Screenplays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2146,
+			"l": "Screwball comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2147,
+			"l": "Scrolls",
+			"bt": [1392],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2148,
+			"l": "Sculptures",
+			"bt": [123],
+			"nt": [273],
+			"d": 2,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 2149,
+			"l": "Sea fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2150,
+			"l": "Sea poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2151,
+			"l": "Sea shanties",
+			"bt": [2643],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2152,
+			"l": "Sean-nós",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2153,
+			"l": "Seguidillas (Music)",
+			"bt": [886],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2154,
+			"l": "Seinen manga",
+			"bt": [1386],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2155,
+			"l": "Self-help publications",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 2156,
+			"l": "Self-instructional works",
+			"bt": [1142],
+			"nt": [1837],
+			"d": 1,
+			"n": 1,
+			"f": 4194304
+		},
+		{
+			"i": 2157,
+			"l": "Self-portraits",
+			"bt": [1806],
+			"nt": [2158],
+			"d": 2,
+			"n": 1,
+			"f": 32
+		},
+		{
+			"i": 2158,
+			"l": "Selfies",
+			"bt": [1736, 2157],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 2159,
+			"l": "Senryu",
+			"bt": [1092],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2160,
+			"l": "Sensation fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2161,
+			"l": "Sentimental comedies",
+			"bt": [460],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2162,
+			"l": "Sentimental novels",
+			"bt": [1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2163,
+			"l": "Sepolcri",
+			"bt": [
+				1062,
+				1639,
+				1955
+			],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2164,
+			"l": "Sequences (Music)",
+			"bt": [1011],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2165,
+			"l": "Sequentiaries (Service books)",
+			"bt": [2171],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 2166,
+			"l": "Serenatas",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2167,
+			"l": "Serial poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2168,
+			"l": "Serial publications",
+			"bt": [1137],
+			"nt": [
+				57,
+				97,
+				1574,
+				1575,
+				1719,
+				2270,
+				2653
+			],
+			"d": 1,
+			"n": 17,
+			"f": 2097152
+		},
+		{
+			"i": 2169,
+			"l": "Serialized fiction",
+			"bt": [843],
+			"nt": [562],
+			"d": 2,
+			"n": 1,
+			"f": 12
+		},
+		{
+			"i": 2170,
+			"l": "Sermons",
+			"bt": [654, 1988],
+			"nt": [1617],
+			"d": 1,
+			"n": 13,
+			"f": 2050
+		},
+		{
+			"i": 2171,
+			"l": "Service books (Music)",
+			"bt": [1600, 1988],
+			"nt": [
+				104,
+				1001,
+				1101,
+				1249,
+				1479,
+				1833,
+				2165
+			],
+			"d": 2,
+			"n": 8,
+			"f": 133138
+		},
+		{
+			"i": 2172,
+			"l": "Session laws",
+			"bt": [2306],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 2173,
+			"l": "Sestets",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2174,
+			"l": "Sestinas",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2175,
+			"l": "Sevdalinkas",
+			"bt": [
+				904,
+				1351,
+				1794
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2176,
+			"l": "Sevillanas (Music)",
+			"bt": [591, 886],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2177,
+			"l": "Sewamono",
+			"bt": [673, 1210],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2178,
+			"l": "Sex comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2179,
+			"l": "Shadow plays",
+			"bt": [1882],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2180,
+			"l": "Shaggy dog stories",
+			"bt": [1087],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2181,
+			"l": "Shape-note hymnals",
+			"bt": [1101],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 133136
+		},
+		{
+			"i": 2182,
+			"l": "Shavuot music",
+			"bt": [1753, 2076],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2183,
+			"l": "Shigin",
+			"bt": [379],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2184,
+			"l": "Shoegaze (Music)",
+			"bt": [69],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2185,
+			"l": "Short films",
+			"bt": [1516],
+			"nt": [
+				24,
+				384,
+				1608,
+				2260,
+				2512
+			],
+			"d": 2,
+			"n": 5,
+			"f": 131168
+		},
+		{
+			"i": 2186,
+			"l": "Short stories",
+			"bt": [843],
+			"nt": [887, 1316],
+			"d": 2,
+			"n": 2,
+			"f": 12
+		},
+		{
+			"i": 2187,
+			"l": "Shortwave radio broadcasts",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2188,
+			"l": "Show business films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2189,
+			"l": "Show business television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2190,
+			"l": "Shōjo manga",
+			"bt": [1386],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2191,
+			"l": "Shōmyō",
+			"bt": [379, 2076],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2192,
+			"l": "Shōnen manga",
+			"bt": [1386],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2193,
+			"l": "Sicilianas (Music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2194,
+			"l": "Sijo",
+			"bt": [1771],
+			"nt": [2103],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 2195,
+			"l": "Silent film music",
+			"bt": [1514],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2196,
+			"l": "Silent films",
+			"bt": [1516],
+			"nt": [24],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2197,
+			"l": "Silhouette animation films",
+			"bt": [90],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2198,
+			"l": "Simplified editions (Music)",
+			"bt": [122],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2199,
+			"l": "Simḥat Torah music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2200,
+			"l": "Singing commercials",
+			"bt": [
+				930,
+				1914,
+				2401
+			],
+			"nt": [1186],
+			"d": 4,
+			"n": 1,
+			"f": 2229490
+		},
+		{
+			"i": 2201,
+			"l": "Singing cowboy films",
+			"bt": [2619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2202,
+			"l": "Singing cowboy television programs",
+			"bt": [2623],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2203,
+			"l": "Singing games",
+			"bt": [1536, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2204,
+			"l": "Sirventes",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2205,
+			"l": "Situation comedies (Television programs)",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2206,
+			"l": "Ska (Music)",
+			"bt": [1794],
+			"nt": [2207],
+			"d": 2,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 2207,
+			"l": "Ska punk (Music)",
+			"bt": [1879, 2206],
+			"nt": [2208],
+			"d": 5,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 2208,
+			"l": "Ska-core (Music)",
+			"bt": [1034, 2207],
+			"nt": [],
+			"d": 6,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2209,
+			"l": "Skaldic poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2210,
+			"l": "Skate punk music",
+			"bt": [1879],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2211,
+			"l": "Skeltonic verse",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2212,
+			"l": "Sketch comedy television programs",
+			"bt": [462, 2399],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32874
+		},
+		{
+			"i": 2213,
+			"l": "Sketchbooks",
+			"bt": [1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2214,
+			"l": "Skiffle",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2215,
+			"l": "Slapstick comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2216,
+			"l": "Slapstick comedy plays",
+			"bt": [833],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2217,
+			"l": "Slapstick comedy television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2218,
+			"l": "Slasher films",
+			"bt": [1073],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2219,
+			"l": "Slave narratives",
+			"bt": [156],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2101248
+		},
+		{
+			"i": 2220,
+			"l": "Slice-of-life comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2221,
+			"l": "Slides",
+			"bt": [2583],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2222,
+			"l": "Sludge metal (Music)",
+			"bt": [1040],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2223,
+			"l": "Snuff films",
+			"bt": [806, 1801],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2224,
+			"l": "Soca (Music)",
+			"bt": [591, 2253],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2225,
+			"l": "Soccer films",
+			"bt": [2284],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2226,
+			"l": "Soccer television programs",
+			"bt": [2290],
+			"nt": [2395],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2227,
+			"l": "Social guidance films",
+			"bt": [722],
+			"nt": [],
+			"d": 5,
+			"n": 0,
+			"f": 4325472
+		},
+		{
+			"i": 2228,
+			"l": "Social issue comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2229,
+			"l": "Social problem fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2230,
+			"l": "Social problem films",
+			"bt": [1137, 1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2231,
+			"l": "Social problem television programs",
+			"bt": [1137, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2232,
+			"l": "Social tragedies (Drama)",
+			"bt": [2485],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2233,
+			"l": "Society verse",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2234,
+			"l": "Soft rock (Music)",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2235,
+			"l": "Software",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2236,
+			"l": "Soil surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2237,
+			"l": "Soliloquies",
+			"bt": [1497],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2238,
+			"l": "Sonatas",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2239,
+			"l": "Sones",
+			"bt": [899, 1794],
+			"nt": [
+				1082,
+				2240,
+				2241
+			],
+			"d": 2,
+			"n": 4,
+			"f": 131090
+		},
+		{
+			"i": 2240,
+			"l": "Sones cubanos",
+			"bt": [2239],
+			"nt": [377],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2241,
+			"l": "Sones jarochos (Music)",
+			"bt": [591, 2239],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2242,
+			"l": "Song cycles",
+			"bt": [125, 2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2243,
+			"l": "Song parodies",
+			"bt": [2246],
+			"nt": [521],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2244,
+			"l": "Song texts",
+			"bt": [1540],
+			"nt": [
+				344,
+				903,
+				1099,
+				2248
+			],
+			"d": 2,
+			"n": 5,
+			"f": 8
+		},
+		{
+			"i": 2245,
+			"l": "Songbooks",
+			"bt": [1600],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2246,
+			"l": "Songs",
+			"bt": [1530],
+			"nt": [
+				42,
+				44,
+				168,
+				177,
+				181,
+				193,
+				218,
+				298,
+				318,
+				319,
+				346,
+				381,
+				440,
+				507,
+				554,
+				629,
+				646,
+				648,
+				668,
+				678,
+				691,
+				705,
+				706,
+				740,
+				759,
+				774,
+				894,
+				904,
+				919,
+				972,
+				1061,
+				1093,
+				1102,
+				1108,
+				1186,
+				1188,
+				1190,
+				1213,
+				1225,
+				1227,
+				1252,
+				1267,
+				1351,
+				1354,
+				1381,
+				1473,
+				1499,
+				1556,
+				1559,
+				1578,
+				1683,
+				1725,
+				1766,
+				1791,
+				1792,
+				1815,
+				1859,
+				1887,
+				1899,
+				1962,
+				2052,
+				2079,
+				2083,
+				2088,
+				2116,
+				2124,
+				2203,
+				2242,
+				2243,
+				2301,
+				2373,
+				2376,
+				2430,
+				2527,
+				2557,
+				2576,
+				2578,
+				2586,
+				2602,
+				2643,
+				2656,
+				2681
+			],
+			"d": 1,
+			"n": 148,
+			"f": 131088
+		},
+		{
+			"i": 2247,
+			"l": "Songs without words (Instrumental music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2248,
+			"l": "Songsters",
+			"bt": [2244],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8
+		},
+		{
+			"i": 2249,
+			"l": "Sonnets",
+			"bt": [1356],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2250,
+			"l": "Sophisticated comedy films",
+			"bt": [459],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2251,
+			"l": "Sophisticated comedy television programs",
+			"bt": [2399],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2252,
+			"l": "Soukous (Music)",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2253,
+			"l": "Soul music",
+			"bt": [1794],
+			"nt": [
+				345,
+				1570,
+				1728,
+				2224
+			],
+			"d": 2,
+			"n": 4,
+			"f": 131088
+		},
+		{
+			"i": 2254,
+			"l": "Sound art",
+			"bt": [123, 1530],
+			"nt": [2261],
+			"d": 2,
+			"n": 1,
+			"f": 131122
+		},
+		{
+			"i": 2255,
+			"l": "Sound books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2256,
+			"l": "Sound corpora",
+			"bt": [608],
+			"nt": [2272],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 2257,
+			"l": "Sound effects recordings",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 2258,
+			"l": "Sound poetry",
+			"bt": [1771],
+			"nt": [1187],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 2259,
+			"l": "Sound recordings",
+			"bt": [],
+			"nt": [
+				43,
+				61,
+				72,
+				146,
+				147,
+				148,
+				149,
+				166,
+				280,
+				394,
+				435,
+				552,
+				617,
+				850,
+				861,
+				1081,
+				1086,
+				1114,
+				1333,
+				1363,
+				1430,
+				1483,
+				1517,
+				1564,
+				1622,
+				1644,
+				1723,
+				1749,
+				1770,
+				1930,
+				1949,
+				1966,
+				1992,
+				2091,
+				2257,
+				2326,
+				2427,
+				2433,
+				2581,
+				2644
+			],
+			"d": 0,
+			"n": 131,
+			"f": 1025
+		},
+		{
+			"i": 2260,
+			"l": "Soundies (Motion pictures)",
+			"bt": [2185],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2261,
+			"l": "Soundscapes (Music)",
+			"bt": [125, 2254],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131122
+		},
+		{
+			"i": 2262,
+			"l": "Sousedskás (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2263,
+			"l": "Space operas (Comics)",
+			"bt": [18, 2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 2264,
+			"l": "Space operas (Fiction)",
+			"bt": [19, 2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524302
+		},
+		{
+			"i": 2265,
+			"l": "Space operas (Motion pictures)",
+			"bt": [20, 2131],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2266,
+			"l": "Space rock (Music)",
+			"bt": [1840, 1863],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2267,
+			"l": "Spaghetti Westerns",
+			"bt": [2619],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2268,
+			"l": "Special events radio coverage",
+			"bt": [
+				654,
+				1137,
+				1593
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 2269,
+			"l": "Special events television coverage",
+			"bt": [
+				654,
+				1137,
+				1594
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2270,
+			"l": "Special issues (Serial publications)",
+			"bt": [2168],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2271,
+			"l": "Spectral music",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2272,
+			"l": "Speech corpora",
+			"bt": [2256],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2273,
+			"l": "Speeches",
+			"bt": [654],
+			"nt": [
+				320,
+				1618,
+				2468
+			],
+			"d": 1,
+			"n": 6,
+			"f": 0
+		},
+		{
+			"i": 2274,
+			"l": "Spirit writings",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2275,
+			"l": "Spirituals (Songs)",
+			"bt": [904, 1102],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2276,
+			"l": "Splatter films",
+			"bt": [1073],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2277,
+			"l": "Split-page books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2278,
+			"l": "Spoken word poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2279,
+			"l": "Sponsored films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2280,
+			"l": "Sponsored television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2281,
+			"l": "Spoonerisms",
+			"bt": [1087],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2282,
+			"l": "Sports comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2283,
+			"l": "Sports fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2284,
+			"l": "Sports films",
+			"bt": [1516],
+			"nt": [907, 2225],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 2285,
+			"l": "Sports plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2286,
+			"l": "Sports poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2287,
+			"l": "Sports posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 2288,
+			"l": "Sports radio programs",
+			"bt": [1930],
+			"nt": [1939],
+			"d": 2,
+			"n": 2,
+			"f": 132224
+		},
+		{
+			"i": 2289,
+			"l": "Sports rules and regulations",
+			"bt": [2065],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2290,
+			"l": "Sports television programs",
+			"bt": [2419],
+			"nt": [2226, 2396],
+			"d": 2,
+			"n": 10,
+			"f": 131168
+		},
+		{
+			"i": 2291,
+			"l": "Sports writing",
+			"bt": [557],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4096
+		},
+		{
+			"i": 2292,
+			"l": "Spurious works",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2293,
+			"l": "Spy comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2294,
+			"l": "Spy fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2295,
+			"l": "Spy films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2296,
+			"l": "Spy radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2297,
+			"l": "Spy television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2298,
+			"l": "Square dance music",
+			"bt": [591, 899],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2299,
+			"l": "Stand-up comedy routines",
+			"bt": [1087],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2300,
+			"l": "Standards (Reference works)",
+			"bt": [1973],
+			"nt": [2081],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 2301,
+			"l": "State songs",
+			"bt": [1709, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2302,
+			"l": "Station drama",
+			"bt": [762],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2303,
+			"l": "Stationery",
+			"bt": [751],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2304,
+			"l": "Statistical maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2305,
+			"l": "Statistics",
+			"bt": [1973],
+			"nt": [
+				245,
+				1195,
+				1431,
+				2584
+			],
+			"d": 2,
+			"n": 4,
+			"f": 2097152
+		},
+		{
+			"i": 2306,
+			"l": "Statutes and codes",
+			"bt": [1137, 1272],
+			"nt": [1527, 2172],
+			"d": 1,
+			"n": 2,
+			"f": 2228738
+		},
+		{
+			"i": 2307,
+			"l": "Steampunk comics",
+			"bt": [2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2308,
+			"l": "Steampunk fiction",
+			"bt": [2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 2309,
+			"l": "Steampunk films",
+			"bt": [828, 2131],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2310,
+			"l": "Steampunk music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2311,
+			"l": "Stick charts",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2312,
+			"l": "Stochastic music",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2313,
+			"l": "Stock footage",
+			"bt": [
+				1516,
+				2419,
+				2568
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2314,
+			"l": "Stoner rock (Music)",
+			"bt": [1040, 1863],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2315,
+			"l": "Stop-motion animation films",
+			"bt": [90],
+			"nt": [441],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2316,
+			"l": "Stories in rhyme",
+			"bt": [843, 1558],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16398
+		},
+		{
+			"i": 2317,
+			"l": "Storyboards",
+			"bt": [690],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2318,
+			"l": "Strambotti",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2319,
+			"l": "Strathspeys (Music)",
+			"bt": [1972],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2320,
+			"l": "Stream of consciousness fiction",
+			"bt": [1866],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2321,
+			"l": "Street films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2322,
+			"l": "Street music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2323,
+			"l": "Strip maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2324,
+			"l": "Structural films",
+			"bt": [803],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2325,
+			"l": "Studies (Music)",
+			"bt": [2379],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4325392
+		},
+		{
+			"i": 2326,
+			"l": "Studio recordings",
+			"bt": [2259],
+			"nt": [61],
+			"d": 1,
+			"n": 1,
+			"f": 1024
+		},
+		{
+			"i": 2327,
+			"l": "Study Bibles",
+			"bt": [1142, 2078],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4196354
+		},
+		{
+			"i": 2328,
+			"l": "Study guides",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 2329,
+			"l": "Style manuals",
+			"bt": [1029],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291456
+		},
+		{
+			"i": 2330,
+			"l": "Subculture films",
+			"bt": [1516],
+			"nt": [1878],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2331,
+			"l": "Subject dictionaries",
+			"bt": [639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2332,
+			"l": "Submarine films",
+			"bt": [2598],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2333,
+			"l": "Subterranean fiction",
+			"bt": [19, 2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524302
+		},
+		{
+			"i": 2334,
+			"l": "Sudoku puzzles",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2335,
+			"l": "Suites",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2336,
+			"l": "Sukkot music",
+			"bt": [1753, 2076],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2337,
+			"l": "Superhero comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2338,
+			"l": "Superhero fiction",
+			"bt": [827, 2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524302
+		},
+		{
+			"i": 2339,
+			"l": "Superhero films",
+			"bt": [828, 2131],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2340,
+			"l": "Superhero plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2341,
+			"l": "Superhero television programs",
+			"bt": [831, 2136],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2342,
+			"l": "Surf music",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2343,
+			"l": "Surrealist films",
+			"bt": [803],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2344,
+			"l": "Surveys",
+			"bt": [1137],
+			"nt": [1259],
+			"d": 1,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 2345,
+			"l": "Survival fiction",
+			"bt": [843],
+			"nt": [108, 2028],
+			"d": 2,
+			"n": 2,
+			"f": 12
+		},
+		{
+			"i": 2346,
+			"l": "Survival films",
+			"bt": [1516],
+			"nt": [109],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2347,
+			"l": "Survival television programs",
+			"bt": [2419],
+			"nt": [110],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2348,
+			"l": "Swamp pop music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2349,
+			"l": "Swashbuckler films",
+			"bt": [1516],
+			"nt": [1759],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2350,
+			"l": "Swing (Music)",
+			"bt": [591, 1178],
+			"nt": [1198],
+			"d": 3,
+			"n": 1,
+			"f": 131090
+		},
+		{
+			"i": 2351,
+			"l": "Symphonic poems",
+			"bt": [1836],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2352,
+			"l": "Symphonies",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2353,
+			"l": "Synagogue music",
+			"bt": [2076],
+			"nt": [332],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2354,
+			"l": "Synthpop (Music)",
+			"bt": [730],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2355,
+			"l": "Séances",
+			"bt": [654],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2356,
+			"l": "Taarab (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2357,
+			"l": "Tables (Data)",
+			"bt": [1973],
+			"nt": [523, 963],
+			"d": 2,
+			"n": 2,
+			"f": 2097152
+		},
+		{
+			"i": 2358,
+			"l": "Tables of contents",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2359,
+			"l": "Tactile works",
+			"bt": [],
+			"nt": [
+				290,
+				291,
+				348,
+				2437
+			],
+			"d": 0,
+			"n": 4,
+			"f": 65537
+		},
+		{
+			"i": 2360,
+			"l": "Taksims",
+			"bt": [125, 1119],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2361,
+			"l": "Talent shows (Radio programs)",
+			"bt": [1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2362,
+			"l": "Talent shows (Television programs)",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2363,
+			"l": "Talking books",
+			"bt": [149],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 66560
+		},
+		{
+			"i": 2364,
+			"l": "Tall tales",
+			"bt": [1089],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2365,
+			"l": "Tamboras (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2366,
+			"l": "Tamboritos",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2367,
+			"l": "Tan ci",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2368,
+			"l": "Tan singing",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2369,
+			"l": "Tangos (Dance)",
+			"bt": [587],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2370,
+			"l": "Tangos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2371,
+			"l": "Tanka",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2372,
+			"l": "Tap dance music",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2373,
+			"l": "Tarana (Music)",
+			"bt": [1047, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2374,
+			"l": "Tarantellas (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2375,
+			"l": "Tarot cards",
+			"bt": [1765],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2376,
+			"l": "Tasnifs",
+			"bt": [606, 2246],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2377,
+			"l": "Taʻziyah",
+			"bt": [1984],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2378,
+			"l": "Teachers' guides",
+			"bt": [1029],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 6291456
+		},
+		{
+			"i": 2379,
+			"l": "Teaching pieces (Music)",
+			"bt": [1142, 1530],
+			"nt": [1452, 2325],
+			"d": 1,
+			"n": 2,
+			"f": 4325394
+		},
+		{
+			"i": 2380,
+			"l": "Technical reports",
+			"bt": [1137],
+			"nt": [
+				8,
+				748,
+				1051
+			],
+			"d": 1,
+			"n": 3,
+			"f": 2097152
+		},
+		{
+			"i": 2381,
+			"l": "Techno (Music)",
+			"bt": [729],
+			"nt": [938],
+			"d": 4,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2382,
+			"l": "Teen films",
+			"bt": [1516],
+			"nt": [
+				208,
+				471,
+				1204
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 2383,
+			"l": "Teen television programs",
+			"bt": [2419],
+			"nt": [472, 1205],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 2384,
+			"l": "Tejano music",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2385,
+			"l": "Telephone directories",
+			"bt": [647],
+			"nt": [2654],
+			"d": 3,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 2386,
+			"l": "Telescoped radio airchecks",
+			"bt": [1907],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2387,
+			"l": "Televised baseball games",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2388,
+			"l": "Televised basketball games",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2389,
+			"l": "Televised football games",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2390,
+			"l": "Televised golf matches",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2391,
+			"l": "Televised hockey games",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2392,
+			"l": "Televised martial arts events",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2393,
+			"l": "Televised parades",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2394,
+			"l": "Televised performances",
+			"bt": [1594],
+			"nt": [501],
+			"d": 3,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 2395,
+			"l": "Televised soccer games",
+			"bt": [2226, 2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2396,
+			"l": "Televised sports events",
+			"bt": [1594, 2290],
+			"nt": [
+				2387,
+				2388,
+				2389,
+				2390,
+				2391,
+				2392,
+				2395,
+				2397
+			],
+			"d": 3,
+			"n": 8,
+			"f": 131170
+		},
+		{
+			"i": 2397,
+			"l": "Televised tennis matches",
+			"bt": [2396],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2398,
+			"l": "Television adaptations",
+			"bt": [25, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2399,
+			"l": "Television comedies",
+			"bt": [1087, 2419],
+			"nt": [
+				604,
+				671,
+				824,
+				1681,
+				2049,
+				2069,
+				2111,
+				2205,
+				2212,
+				2217,
+				2251
+			],
+			"d": 2,
+			"n": 11,
+			"f": 131170
+		},
+		{
+			"i": 2400,
+			"l": "Television commentaries",
+			"bt": [654, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2401,
+			"l": "Television commercials",
+			"bt": [30, 2419],
+			"nt": [
+				1784,
+				1845,
+				2200
+			],
+			"d": 3,
+			"n": 4,
+			"f": 2228322
+		},
+		{
+			"i": 2402,
+			"l": "Television cooking shows",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2403,
+			"l": "Television cop shows",
+			"bt": [2404],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2404,
+			"l": "Television crime shows",
+			"bt": [846],
+			"nt": [
+				626,
+				908,
+				947,
+				1205,
+				1829,
+				2403
+			],
+			"d": 3,
+			"n": 6,
+			"f": 131168
+		},
+		{
+			"i": 2405,
+			"l": "Television criticism and reviews",
+			"bt": [654, 2418],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2406,
+			"l": "Television dance parties",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2407,
+			"l": "Television game shows",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2408,
+			"l": "Television melodramas",
+			"bt": [846],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2409,
+			"l": "Television mini-series",
+			"bt": [2425],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2410,
+			"l": "Television music",
+			"bt": [930],
+			"nt": [91],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2411,
+			"l": "Television musicals",
+			"bt": [1541, 2419],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131186
+		},
+		{
+			"i": 2412,
+			"l": "Television news programs",
+			"bt": [1137, 1594],
+			"nt": [742],
+			"d": 3,
+			"n": 1,
+			"f": 2228322
+		},
+		{
+			"i": 2413,
+			"l": "Television operas",
+			"bt": [1635, 2419],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131186
+		},
+		{
+			"i": 2414,
+			"l": "Television pilot programs",
+			"bt": [2425],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2415,
+			"l": "Television plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2416,
+			"l": "Television program clips",
+			"bt": [793, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2417,
+			"l": "Television program excerpts",
+			"bt": [793, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2418,
+			"l": "Television program reviews",
+			"bt": [2010],
+			"nt": [2405],
+			"d": 2,
+			"n": 1,
+			"f": 2097152
+		},
+		{
+			"i": 2419,
+			"l": "Television programs",
+			"bt": [2583],
+			"nt": [
+				22,
+				88,
+				92,
+				101,
+				162,
+				243,
+				300,
+				336,
+				395,
+				421,
+				455,
+				487,
+				558,
+				573,
+				650,
+				683,
+				750,
+				775,
+				781,
+				846,
+				959,
+				1060,
+				1063,
+				1077,
+				1161,
+				1162,
+				1229,
+				1287,
+				1303,
+				1334,
+				1367,
+				1432,
+				1466,
+				1505,
+				1534,
+				1552,
+				1594,
+				1634,
+				1648,
+				1675,
+				1802,
+				1852,
+				1883,
+				1991,
+				2026,
+				2044,
+				2071,
+				2096,
+				2144,
+				2189,
+				2231,
+				2280,
+				2290,
+				2297,
+				2313,
+				2347,
+				2383,
+				2398,
+				2399,
+				2401,
+				2406,
+				2407,
+				2411,
+				2413,
+				2416,
+				2417,
+				2420,
+				2421,
+				2422,
+				2423,
+				2424,
+				2425,
+				2428,
+				2455,
+				2497,
+				2534,
+				2603,
+				2609,
+				2623
+			],
+			"d": 1,
+			"n": 189,
+			"f": 131168
+		},
+		{
+			"i": 2420,
+			"l": "Television programs for hard of hearing people",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2421,
+			"l": "Television programs for people with visual disabilities",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2422,
+			"l": "Television public service announcements",
+			"bt": [1847, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2423,
+			"l": "Television quiz shows",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2424,
+			"l": "Television remakes",
+			"bt": [619, 2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2425,
+			"l": "Television series",
+			"bt": [2419],
+			"nt": [
+				2409,
+				2414,
+				2426
+			],
+			"d": 2,
+			"n": 3,
+			"f": 131168
+		},
+		{
+			"i": 2426,
+			"l": "Television soap operas",
+			"bt": [2425],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2427,
+			"l": "Television soundtracks",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 2428,
+			"l": "Television specials",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2429,
+			"l": "Television talk shows",
+			"bt": [654, 1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2430,
+			"l": "Tembang Sunda",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2431,
+			"l": "Ten-minute plays",
+			"bt": [1627],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2432,
+			"l": "Terza rima",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2433,
+			"l": "Test pressings (Sound recordings)",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 2434,
+			"l": "Text corpora",
+			"bt": [608],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2435,
+			"l": "Text-sound compositions",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2436,
+			"l": "Textbooks",
+			"bt": [1142],
+			"nt": [
+				353,
+				1068,
+				1959
+			],
+			"d": 1,
+			"n": 4,
+			"f": 4194304
+		},
+		{
+			"i": 2437,
+			"l": "Textured books",
+			"bt": [2359, 2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 2438,
+			"l": "Thanksgiving Day sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 2439,
+			"l": "Theater announcements (Motion pictures)",
+			"bt": [1137, 1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2440,
+			"l": "Theater commercials (Motion pictures)",
+			"bt": [30, 1516],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2441,
+			"l": "Theater programs",
+			"bt": [1838],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2442,
+			"l": "Theater reviews",
+			"bt": [2010],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2443,
+			"l": "Theatrical adaptations",
+			"bt": [25, 684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2444,
+			"l": "Theatrical fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2445,
+			"l": "Thematic catalogs (Music)",
+			"bt": [354],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2446,
+			"l": "Thematic maps",
+			"bt": [1394],
+			"nt": [2487],
+			"d": 2,
+			"n": 1,
+			"f": 2228512
+		},
+		{
+			"i": 2447,
+			"l": "Thesauri (Dictionaries)",
+			"bt": [639],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2448,
+			"l": "Third stream (Music)",
+			"bt": [125, 1178],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2449,
+			"l": "Thrash metal (Music)",
+			"bt": [1040],
+			"nt": [1014],
+			"d": 4,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2450,
+			"l": "Thriller comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2451,
+			"l": "Thriller plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2452,
+			"l": "Thrillers (Fiction)",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2453,
+			"l": "Thrillers (Motion pictures)",
+			"bt": [1867],
+			"nt": [514],
+			"d": 3,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2454,
+			"l": "Thrillers (Radio programs)",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2455,
+			"l": "Thrillers (Television programs)",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2456,
+			"l": "Thumb Bibles",
+			"bt": [
+				4,
+				1470,
+				2078
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2050
+		},
+		{
+			"i": 2457,
+			"l": "Tientos (Art music)",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2458,
+			"l": "Timba (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2459,
+			"l": "Time-lapse films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2460,
+			"l": "Time-travel comics",
+			"bt": [2130],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2461,
+			"l": "Time-travel fiction",
+			"bt": [2129],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 524300
+		},
+		{
+			"i": 2462,
+			"l": "Time-travel films",
+			"bt": [2131],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2463,
+			"l": "Time-travel television programs",
+			"bt": [2136],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2464,
+			"l": "Timesheets",
+			"bt": [1137, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2465,
+			"l": "Timetables (Transportation)",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2466,
+			"l": "Title abbreviations",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2467,
+			"l": "Toasts (Poetry)",
+			"bt": [901, 1558],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16394
+		},
+		{
+			"i": 2468,
+			"l": "Toasts (Speeches)",
+			"bt": [475, 2273],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2
+		},
+		{
+			"i": 2469,
+			"l": "Toccatas",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2470,
+			"l": "Togatae",
+			"bt": [460],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2471,
+			"l": "Tonadillas",
+			"bt": [1153, 1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2472,
+			"l": "Tongue twisters",
+			"bt": [898, 1087],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 10
+		},
+		{
+			"i": 2473,
+			"l": "Topeng plays",
+			"bt": [589],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2474,
+			"l": "Topographic maps",
+			"bt": [1394],
+			"nt": [202, 1735],
+			"d": 2,
+			"n": 2,
+			"f": 2228512
+		},
+		{
+			"i": 2475,
+			"l": "Topographical poetry",
+			"bt": [1771],
+			"nt": [1579],
+			"d": 2,
+			"n": 1,
+			"f": 16392
+		},
+		{
+			"i": 2476,
+			"l": "Topological maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2477,
+			"l": "Tourist maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2478,
+			"l": "Toy and movable books",
+			"bt": [1113],
+			"nt": [
+				11,
+				200,
+				883,
+				890,
+				949,
+				989,
+				1310,
+				1733,
+				1793,
+				2118,
+				2255,
+				2277,
+				2437,
+				2525,
+				2538
+			],
+			"d": 2,
+			"n": 16,
+			"f": 65568
+		},
+		{
+			"i": 2479,
+			"l": "Tracts (Ephemera)",
+			"bt": [1142, 1657],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 4194306
+		},
+		{
+			"i": 2480,
+			"l": "Trad jazz",
+			"bt": [657],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2481,
+			"l": "Trade catalogs",
+			"bt": [751, 2085],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2482,
+			"l": "Trademark lists",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2483,
+			"l": "Trading cards",
+			"bt": [751, 1113],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 2484,
+			"l": "Traffic surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2485,
+			"l": "Tragedies (Drama)",
+			"bt": [684],
+			"nt": [
+				1043,
+				2008,
+				2232
+			],
+			"d": 2,
+			"n": 3,
+			"f": 32776
+		},
+		{
+			"i": 2486,
+			"l": "Tragicomedies",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2487,
+			"l": "Trail maps",
+			"bt": [2446],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2488,
+			"l": "Trance (Electronic dance music)",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2489,
+			"l": "Trance music",
+			"bt": [930],
+			"nt": [195],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2490,
+			"l": "Transcripts",
+			"bt": [619],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2491,
+			"l": "Transgender comics",
+			"bt": [1893],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2492,
+			"l": "Transgender drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2493,
+			"l": "Transgender fiction",
+			"bt": [1894],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2494,
+			"l": "Transgender films",
+			"bt": [1895],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2495,
+			"l": "Transgender operas",
+			"bt": [1635],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2496,
+			"l": "Transgender poetry",
+			"bt": [1896],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2497,
+			"l": "Transgender television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2498,
+			"l": "Transit maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2499,
+			"l": "Transitoria (Music)",
+			"bt": [1853],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2500,
+			"l": "Translations",
+			"bt": [619],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2501,
+			"l": "Trap (Music)",
+			"bt": [1953],
+			"nt": [1265],
+			"d": 3,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2502,
+			"l": "Travaux préparatoires (Treaties)",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2503,
+			"l": "Travel comics",
+			"bt": [1590],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2504,
+			"l": "Travel posters",
+			"bt": [1810, 1847],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 2505,
+			"l": "Travel writing",
+			"bt": [557],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4096
+		},
+		{
+			"i": 2506,
+			"l": "Travelogues (Motion pictures)",
+			"bt": [661, 1137],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2507,
+			"l": "Travelogues (Radio programs)",
+			"bt": [664, 1137],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2229378
+		},
+		{
+			"i": 2508,
+			"l": "Travelogues (Television programs)",
+			"bt": [665, 1137],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2228322
+		},
+		{
+			"i": 2509,
+			"l": "Treaties",
+			"bt": [1272, 1967],
+			"nt": [479],
+			"d": 2,
+			"n": 1,
+			"f": 2228738
+		},
+		{
+			"i": 2510,
+			"l": "Trial and arbitral proceedings",
+			"bt": [1272, 1967],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2511,
+			"l": "Trick films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2512,
+			"l": "Trigger films",
+			"bt": [2185],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2513,
+			"l": "Trinity Sunday music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2514,
+			"l": "Triolets",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2515,
+			"l": "Trip-hop (Music)",
+			"bt": [729, 1048],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2516,
+			"l": "Trivia and miscellanea",
+			"bt": [1973],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2517,
+			"l": "Tropes (Music)",
+			"bt": [1011],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2518,
+			"l": "Tropicália (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2519,
+			"l": "True adventure stories",
+			"bt": [557],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4096
+		},
+		{
+			"i": 2520,
+			"l": "True crime comics",
+			"bt": [1590],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2521,
+			"l": "True crime stories",
+			"bt": [557],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4096
+		},
+		{
+			"i": 2522,
+			"l": "True crime television programs",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2523,
+			"l": "Tsapiky (Music)",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2524,
+			"l": "Tune books",
+			"bt": [1600],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2525,
+			"l": "Tunnel books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2526,
+			"l": "Turbo-folk (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2527,
+			"l": "Twist songs",
+			"bt": [
+				591,
+				2033,
+				2246
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2528,
+			"l": "Two-Spirit comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2529,
+			"l": "Typewriter art",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2530,
+			"l": "Tyroliennes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2531,
+			"l": "UK garage (Music)",
+			"bt": [729],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2532,
+			"l": "Underground comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2533,
+			"l": "Underground periodicals",
+			"bt": [1719],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2534,
+			"l": "Unedited footage",
+			"bt": [
+				1516,
+				2419,
+				2568
+			],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2535,
+			"l": "Uniform laws",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2536,
+			"l": "Union catalogs",
+			"bt": [1307],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2537,
+			"l": "Untelescoped radio airchecks",
+			"bt": [1907],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2538,
+			"l": "Upside-down books",
+			"bt": [2478],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2539,
+			"l": "Upside-down maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2540,
+			"l": "Urban fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2541,
+			"l": "Urban legends",
+			"bt": [905],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2542,
+			"l": "Utai",
+			"bt": [379, 1612],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2543,
+			"l": "Utopian fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2544,
+			"l": "Utopian plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2545,
+			"l": "Utopian poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2546,
+			"l": "Vallenato",
+			"bt": [899, 1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2547,
+			"l": "Vampire comics",
+			"bt": [1501, 1669],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 2548,
+			"l": "Vampire drama",
+			"bt": [1502, 1670],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2549,
+			"l": "Vampire fiction",
+			"bt": [1503, 1671],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 14
+		},
+		{
+			"i": 2550,
+			"l": "Vampire films",
+			"bt": [1504, 1672],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2551,
+			"l": "Vampire television programs",
+			"bt": [1505, 1675],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2552,
+			"l": "Vaporwave (Music)",
+			"bt": [730],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2553,
+			"l": "Variations (Music)",
+			"bt": [125],
+			"nt": [
+				371,
+				894,
+				1689,
+				1742
+			],
+			"d": 2,
+			"n": 4,
+			"f": 131088
+		},
+		{
+			"i": 2554,
+			"l": "Variety shows (Motion pictures)",
+			"bt": [1591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2555,
+			"l": "Variety shows (Radio programs)",
+			"bt": [1593],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2556,
+			"l": "Variety shows (Television programs)",
+			"bt": [1594],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2557,
+			"l": "Vaudeville songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2558,
+			"l": "Vector data",
+			"bt": [971],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097408
+		},
+		{
+			"i": 2559,
+			"l": "Verbatim theater",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2560,
+			"l": "Verse drama",
+			"bt": [684],
+			"nt": [1245],
+			"d": 2,
+			"n": 1,
+			"f": 32776
+		},
+		{
+			"i": 2561,
+			"l": "Verse hagiographies",
+			"bt": [241, 1989],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2117642
+		},
+		{
+			"i": 2562,
+			"l": "Verse satire",
+			"bt": [1092, 2108],
+			"nt": [1485],
+			"d": 3,
+			"n": 1,
+			"f": 16394
+		},
+		{
+			"i": 2563,
+			"l": "Vesnianky",
+			"bt": [791, 904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2564,
+			"l": "Vespers (Music)",
+			"bt": [656, 790],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2565,
+			"l": "Video art",
+			"bt": [123],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2566,
+			"l": "Video games",
+			"bt": [1886],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2567,
+			"l": "Video installations (Art)",
+			"bt": [1141, 2568],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 2568,
+			"l": "Video recordings",
+			"bt": [2583],
+			"nt": [
+				558,
+				850,
+				1534,
+				1770,
+				2313,
+				2534,
+				2567,
+				2569,
+				2570
+			],
+			"d": 1,
+			"n": 11,
+			"f": 32
+		},
+		{
+			"i": 2569,
+			"l": "Video recordings for hard of hearing people",
+			"bt": [2568],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2570,
+			"l": "Video recordings for people with visual disabilities",
+			"bt": [2568],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2571,
+			"l": "Views",
+			"bt": [
+				347,
+				1137,
+				2583
+			],
+			"nt": [33, 2647],
+			"d": 1,
+			"n": 2,
+			"f": 2097442
+		},
+		{
+			"i": 2572,
+			"l": "Vil pāṭṭu",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2573,
+			"l": "Villancicos (Music)",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2574,
+			"l": "Villancicos (Poetry)",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2575,
+			"l": "Villanelle",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2576,
+			"l": "Villanelle (Songs)",
+			"bt": [2246],
+			"nt": [982, 1508],
+			"d": 2,
+			"n": 2,
+			"f": 131088
+		},
+		{
+			"i": 2577,
+			"l": "Villotte",
+			"bt": [1683],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2578,
+			"l": "Virelais (Formes fixes)",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2579,
+			"l": "Visitation Festival music",
+			"bt": [791, 2076],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2580,
+			"l": "Visitor surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2581,
+			"l": "Visual albums",
+			"bt": [
+				1534,
+				1535,
+				2259
+			],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 132210
+		},
+		{
+			"i": 2582,
+			"l": "Visual poetry",
+			"bt": [1771, 2583],
+			"nt": [
+				15,
+				506,
+				1261,
+				1711
+			],
+			"d": 2,
+			"n": 5,
+			"f": 16426
+		},
+		{
+			"i": 2583,
+			"l": "Visual works",
+			"bt": [],
+			"nt": [
+				60,
+				123,
+				690,
+				884,
+				1113,
+				1140,
+				1185,
+				1384,
+				1394,
+				1488,
+				1516,
+				1736,
+				1750,
+				1751,
+				1806,
+				1812,
+				1826,
+				1994,
+				2221,
+				2419,
+				2568,
+				2571,
+				2582
+			],
+			"d": 0,
+			"n": 711,
+			"f": 33
+		},
+		{
+			"i": 2584,
+			"l": "Vital statistics",
+			"bt": [2305],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2585,
+			"l": "Vocal scores",
+			"bt": [122, 2142],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2586,
+			"l": "Vocalises",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2587,
+			"l": "Vox pop radio programs",
+			"bt": [1920],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2588,
+			"l": "Vọng cố",
+			"bt": [125],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2589,
+			"l": "Waila music",
+			"bt": [591, 1794],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2590,
+			"l": "Wall charts",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2591,
+			"l": "Wall maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2592,
+			"l": "Waltzes (Dance)",
+			"bt": [187],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2593,
+			"l": "Waltzes (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2594,
+			"l": "Wanted posters",
+			"bt": [889, 1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 2595,
+			"l": "War comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2596,
+			"l": "War drama",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2597,
+			"l": "War fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2598,
+			"l": "War films",
+			"bt": [1516],
+			"nt": [2332],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2599,
+			"l": "War poetry",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2600,
+			"l": "War posters",
+			"bt": [1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097184
+		},
+		{
+			"i": 2601,
+			"l": "War radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2602,
+			"l": "War songs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2603,
+			"l": "War television programs",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2604,
+			"l": "Watercolors",
+			"bt": [690, 1653],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 34
+		},
+		{
+			"i": 2605,
+			"l": "Waulking songs",
+			"bt": [904, 2643],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2606,
+			"l": "Wayang music",
+			"bt": [686],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2607,
+			"l": "Web archives",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2608,
+			"l": "Webcomics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2609,
+			"l": "Webisodes",
+			"bt": [2419],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2610,
+			"l": "Wedding music",
+			"bt": [791],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2611,
+			"l": "Wedding sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 2612,
+			"l": "Werewolf comics",
+			"bt": [1501, 1669],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 2613,
+			"l": "Werewolf drama",
+			"bt": [1502, 1670],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2614,
+			"l": "Werewolf fiction",
+			"bt": [1503, 1671],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 14
+		},
+		{
+			"i": 2615,
+			"l": "Werewolf films",
+			"bt": [1504, 1672],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2616,
+			"l": "Werewolf television programs",
+			"bt": [1505, 1675],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2617,
+			"l": "Western comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2618,
+			"l": "Western fiction",
+			"bt": [843],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2619,
+			"l": "Western films",
+			"bt": [1516],
+			"nt": [2201, 2267],
+			"d": 2,
+			"n": 2,
+			"f": 131168
+		},
+		{
+			"i": 2620,
+			"l": "Western plays",
+			"bt": [684],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2621,
+			"l": "Western radio programs",
+			"bt": [1930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 132224
+		},
+		{
+			"i": 2622,
+			"l": "Western swing (Music)",
+			"bt": [
+				539,
+				591,
+				1178
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2623,
+			"l": "Western television programs",
+			"bt": [2419],
+			"nt": [2202],
+			"d": 2,
+			"n": 1,
+			"f": 131168
+		},
+		{
+			"i": 2624,
+			"l": "Wheel charts",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2625,
+			"l": "Wildlife films",
+			"bt": [1562],
+			"nt": [],
+			"d": 7,
+			"n": 0,
+			"f": 4325472
+		},
+		{
+			"i": 2626,
+			"l": "Wildlife maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2627,
+			"l": "Wildlife posters",
+			"bt": [1137, 1810],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097186
+		},
+		{
+			"i": 2628,
+			"l": "Wildlife recovery plans",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2629,
+			"l": "Wildlife television programs",
+			"bt": [1565],
+			"nt": [],
+			"d": 7,
+			"n": 0,
+			"f": 4325472
+		},
+		{
+			"i": 2630,
+			"l": "Wills",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 2631,
+			"l": "Wine lists",
+			"bt": [1447],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2632,
+			"l": "Witch comics",
+			"bt": [1669],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2633,
+			"l": "Witch fiction",
+			"bt": [1671],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2634,
+			"l": "Witch films",
+			"bt": [844, 1672],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2635,
+			"l": "Witch television programs",
+			"bt": [846, 1675],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2636,
+			"l": "Wizard rock (Music)",
+			"bt": [2033],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2637,
+			"l": "Wood engravings",
+			"bt": [1981],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2638,
+			"l": "Woodcuts",
+			"bt": [1981],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2639,
+			"l": "Word puzzles and games",
+			"bt": [1886],
+			"nt": [
+				16,
+				78,
+				564
+			],
+			"d": 2,
+			"n": 4,
+			"f": 0
+		},
+		{
+			"i": 2640,
+			"l": "Wordless comics",
+			"bt": [463],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2641,
+			"l": "Wordless novels",
+			"bt": [1113, 1605],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 46
+		},
+		{
+			"i": 2642,
+			"l": "Wordless picture books",
+			"bt": [1747],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32
+		},
+		{
+			"i": 2643,
+			"l": "Work songs",
+			"bt": [930, 2246],
+			"nt": [2151, 2605],
+			"d": 2,
+			"n": 2,
+			"f": 131090
+		},
+		{
+			"i": 2644,
+			"l": "Workshop sounds",
+			"bt": [2259],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 1024
+		},
+		{
+			"i": 2645,
+			"l": "World atlases",
+			"bt": [140],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097408
+		},
+		{
+			"i": 2646,
+			"l": "World maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2647,
+			"l": "Worm's-eye views",
+			"bt": [2571],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2097440
+		},
+		{
+			"i": 2648,
+			"l": "Writing prompts",
+			"bt": [1142],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 4194304
+		},
+		{
+			"i": 2649,
+			"l": "Writs",
+			"bt": [1283],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2228736
+		},
+		{
+			"i": 2650,
+			"l": "Xiang sheng",
+			"bt": [1087],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 0
+		},
+		{
+			"i": 2651,
+			"l": "Yakṣagāna plays",
+			"bt": [589],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32776
+		},
+		{
+			"i": 2652,
+			"l": "Year books (English law reports)",
+			"bt": [1137, 1272],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2228738
+		},
+		{
+			"i": 2653,
+			"l": "Yearbooks",
+			"bt": [475, 2168],
+			"nt": [2125],
+			"d": 2,
+			"n": 1,
+			"f": 2097154
+		},
+		{
+			"i": 2654,
+			"l": "Yellow pages",
+			"bt": [2385],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2655,
+			"l": "Yiddish films",
+			"bt": [1516],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131168
+		},
+		{
+			"i": 2656,
+			"l": "Yodels",
+			"bt": [
+				539,
+				899,
+				2246
+			],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2657,
+			"l": "Yoga music",
+			"bt": [930],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2658,
+			"l": "Yoiks",
+			"bt": [904],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2659,
+			"l": "Yom Kippur fiction",
+			"bt": [1985],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2660,
+			"l": "Yom Kippur music",
+			"bt": [1044, 2076],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2661,
+			"l": "Yom Kippur poetry",
+			"bt": [1989],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2662,
+			"l": "Yom Kippur sermons",
+			"bt": [1617],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2048
+		},
+		{
+			"i": 2663,
+			"l": "Yue fu",
+			"bt": [1771],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 16392
+		},
+		{
+			"i": 2664,
+			"l": "Yuri manga",
+			"bt": [1386],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8232
+		},
+		{
+			"i": 2665,
+			"l": "Zamba (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2666,
+			"l": "Zarzuelas",
+			"bt": [686],
+			"nt": [2084],
+			"d": 2,
+			"n": 1,
+			"f": 131088
+		},
+		{
+			"i": 2667,
+			"l": "Zemirot",
+			"bt": [1102],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2668,
+			"l": "Zines",
+			"bt": [751, 1719],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 2097154
+		},
+		{
+			"i": 2669,
+			"l": "Zombie comics",
+			"bt": [1501, 1669],
+			"nt": [],
+			"d": 4,
+			"n": 0,
+			"f": 8234
+		},
+		{
+			"i": 2670,
+			"l": "Zombie drama",
+			"bt": [1502, 1670],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 32778
+		},
+		{
+			"i": 2671,
+			"l": "Zombie fiction",
+			"bt": [1503, 1671],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 14
+		},
+		{
+			"i": 2672,
+			"l": "Zombie films",
+			"bt": [1504, 1672],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2673,
+			"l": "Zombie television programs",
+			"bt": [1505, 1675],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131170
+		},
+		{
+			"i": 2674,
+			"l": "Zoning maps",
+			"bt": [1394],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 2228512
+		},
+		{
+			"i": 2675,
+			"l": "Zoological surveys",
+			"bt": [1137],
+			"nt": [],
+			"d": 1,
+			"n": 0,
+			"f": 2097152
+		},
+		{
+			"i": 2676,
+			"l": "Zortzikos (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2677,
+			"l": "Zouk (Music)",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2678,
+			"l": "Zydeco music",
+			"bt": [1794],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2679,
+			"l": "Ālāpa",
+			"bt": [342, 1944],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131090
+		},
+		{
+			"i": 2680,
+			"l": "Čočeks (Music)",
+			"bt": [591],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2681,
+			"l": "Şarkıs",
+			"bt": [2246],
+			"nt": [],
+			"d": 2,
+			"n": 0,
+			"f": 131088
+		},
+		{
+			"i": 2682,
+			"l": "ʻĪd al-Aḍḥā fiction",
+			"bt": [1985],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		},
+		{
+			"i": 2683,
+			"l": "ʻĪd al-Fiṭr fiction",
+			"bt": [1985],
+			"nt": [],
+			"d": 3,
+			"n": 0,
+			"f": 12
+		}
+	]
+};
+var F = {
+	TOP: 1,
+	POLY: 2,
+	FICTION: 4,
+	LIT: 8,
+	MUSIC: 16,
+	VISUAL: 32,
+	MOTION: 64,
+	RADIO: 128,
+	CARTO: 256,
+	LAW: 512,
+	SOUND: 1024,
+	REL: 2048,
+	CNF: 4096,
+	COMICS: 8192,
+	POETRY: 16384,
+	DRAMA: 32768,
+	CARRIER: 65536,
+	REJECT: 131072,
+	ROMANCE: 262144,
+	SFF: 524288,
+	MYSTERY: 1048576,
+	NF: 2097152,
+	INSTR: 4194304
+};
+var dump = taxonomy_default;
+var SOURCE = dump.source;
+dump.generated;
+var TERM_COUNT = dump.n;
+var REL_COUNT = dump.rels;
+var POLY_COUNT = dump.poly;
+var terms = dump.terms;
+var topIds = dump.tops;
+var byLabel = /* @__PURE__ */ new Map();
+for (const t of terms) byLabel.set(t.l, t);
+function getTerm(i) {
+	return terms[i];
+}
+function getByLabel(label) {
+	return byLabel.get(label);
+}
+function has(t, flag) {
+	return (t.f & flag) !== 0;
+}
+function slugify(label) {
+	return encodeURIComponent(label);
+}
+function fromSlug(slug) {
+	try {
+		return getByLabel(decodeURIComponent(slug));
+	} catch {
+		return getByLabel(slug);
+	}
+}
+var EXCEPT_TOPS = /* @__PURE__ */ new Set([
+	"Anthologies",
+	"Large print books",
+	"Miniature books",
+	"Multilingual works",
+	"Tactile works"
+]);
+var SCRIPT_OK = /* @__PURE__ */ new Set([
+	"Screenplays",
+	"Television plays",
+	"Radio plays",
+	"Radio scripts",
+	"Librettos",
+	"Comics scripts",
+	"Promptbooks",
+	"Drama"
+]);
+function isSatellite(t) {
+	if (SCRIPT_OK.has(t.l)) return false;
+	if (has(t, F.LIT) || has(t, F.FICTION) || has(t, F.COMICS) || has(t, F.DRAMA) || has(t, F.POETRY) || has(t, F.CNF)) return false;
+	return has(t, F.MUSIC) || has(t, F.MOTION) || has(t, F.RADIO) || has(t, F.CARTO) || has(t, F.LAW);
+}
+function validateAssignment(labels, opts) {
+	const issues = [];
+	const seen = /* @__PURE__ */ new Set();
+	const resolved = [];
+	for (const rawLabel of labels) {
+		const label = rawLabel.trim();
+		if (!label) continue;
+		if (seen.has(label)) {
+			issues.push({
+				level: "error",
+				code: "dup",
+				message: `Duplicate term: ${label}`
+			});
+			continue;
+		}
+		seen.add(label);
+		const t = getByLabel(label);
+		if (!t) {
+			issues.push({
+				level: "error",
+				code: "unknown",
+				message: `Not an authorized preferred term: “${label}”`
+			});
+			continue;
+		}
+		resolved.push(t);
+	}
+	if (resolved.length > 4) issues.push({
+		level: "error",
+		code: "max",
+		message: "Assign 1–4 LCGFT terms. More than four usually means tropes or subjects leaked in."
+	});
+	if (resolved.length === 0) issues.push({
+		level: "warn",
+		code: "empty",
+		message: "Every title record needs at least one LCGFT term."
+	});
+	const hasForm = resolved.some((t) => t.l === "Novels" || t.l === "Novellas" || t.l === "Short stories" || t.l === "Novelle" || t.l === "Graphic novels" || t.l === "Manga" || t.l === "Picture books" || t.l === "Poetry" || t.l === "Drama" || t.l === "Memoirs" || t.l === "Essays" || t.l === "Anthologies" || has(t, F.CARRIER));
+	if (resolved.some((t) => has(t, F.FICTION) || has(t, F.ROMANCE) || has(t, F.SFF) || has(t, F.MYSTERY) || has(t, F.CNF) || has(t, F.COMICS)) && !hasForm) issues.push({
+		level: "hint",
+		code: "form",
+		message: "Pair genre with form when both are true (Novels + Romance fiction)."
+	});
+	for (const t of resolved) {
+		if (has(t, F.TOP) && !EXCEPT_TOPS.has(t.l)) issues.push({
+			level: "warn",
+			code: "broad",
+			message: `“${t.l}” is a top-level family — too broad for a trade monograph.`
+		});
+		if (opts.carrier !== "other" && isSatellite(t)) issues.push({
+			level: "warn",
+			code: "satellite",
+			message: `“${t.l}” belongs to a satellite family (music, moving-image, radio, cartographic, or law). Unusual on a book record.`
+		});
+		if (opts.carrier === "audio" && t.l === "Audiobooks") continue;
+		if (opts.carrier !== "audio" && t.l === "Audiobooks") issues.push({
+			level: "error",
+			code: "carrier",
+			message: "Audiobooks belongs on the audio manifestation, not print or ebook."
+		});
+	}
+	if (opts.carrier === "audio" && !resolved.some((t) => t.l === "Audiobooks")) issues.push({
+		level: "hint",
+		code: "audio",
+		message: "Audio manifestations should include Audiobooks plus the work’s literary terms."
+	});
+	return issues;
+}
+function searchTerms(q, limit = 40) {
+	const needle = q.trim().toLowerCase();
+	if (!needle) return [];
+	const starts = [];
+	const includes = [];
+	for (const t of terms) {
+		const hay = t.l.toLowerCase();
+		if (hay.startsWith(needle)) starts.push(t);
+		else if (hay.includes(needle)) includes.push(t);
+		if (starts.length >= limit) break;
+	}
+	return starts.concat(includes).slice(0, limit);
+}
+function familyLabels(t) {
+	const out = [];
+	if (has(t, F.LIT)) out.push("Literature");
+	if (has(t, F.FICTION)) out.push("Fiction");
+	if (has(t, F.ROMANCE)) out.push("Romance");
+	if (has(t, F.SFF)) out.push("Speculative");
+	if (has(t, F.MYSTERY)) out.push("Mystery");
+	if (has(t, F.COMICS)) out.push("Comics");
+	if (has(t, F.POETRY)) out.push("Poetry");
+	if (has(t, F.DRAMA)) out.push("Drama");
+	if (has(t, F.CNF)) out.push("Creative NF");
+	if (has(t, F.MUSIC)) out.push("Music");
+	if (has(t, F.VISUAL)) out.push("Visual");
+	if (has(t, F.MOTION)) out.push("Moving image");
+	if (has(t, F.SOUND)) out.push("Sound");
+	if (has(t, F.REL)) out.push("Religious");
+	if (has(t, F.LAW)) out.push("Law");
+	if (has(t, F.CARTO)) out.push("Cartographic");
+	if (has(t, F.INSTR)) out.push("Instructional");
+	if (has(t, F.NF)) out.push("Informational");
+	return out;
+}
+function parentsOf(t) {
+	return t.bt.map((i) => terms[i]).filter(Boolean);
+}
+function childrenOf(t) {
+	return t.nt.map((i) => terms[i]).filter(Boolean);
+}
+/** One ancestral path (first BT at each step). */
+function breadcrumb(t) {
+	const path = [];
+	const seen = /* @__PURE__ */ new Set();
+	let cur = t;
+	while (cur && !seen.has(cur.i)) {
+		path.unshift(cur);
+		seen.add(cur.i);
+		cur = cur.bt.length ? terms[cur.bt[0]] : void 0;
+	}
+	return path;
+}
+var STATS = {
+	terms: TERM_COUNT,
+	rels: REL_COUNT,
+	poly: POLY_COUNT,
+	tops: topIds.length,
+	fiction: terms.filter((t) => has(t, F.FICTION)).length,
+	literature: terms.filter((t) => has(t, F.LIT)).length,
+	comics: terms.filter((t) => has(t, F.COMICS)).length,
+	poetry: terms.filter((t) => has(t, F.POETRY)).length,
+	drama: terms.filter((t) => has(t, F.DRAMA)).length,
+	romance: terms.filter((t) => has(t, F.ROMANCE)).length
+};
+function CommandPalette() {
+	const [q, setQ] = (0, import_react.useState)("");
+	const [open, setOpen] = (0, import_react.useState)(false);
+	const navigate = useNavigate();
+	const hits = (0, import_react.useMemo)(() => q.trim() ? searchTerms(q, 8) : [], [q]);
+	function go(label) {
+		setOpen(false);
+		setQ("");
+		navigate({
+			to: "/term/$slug",
+			params: { slug: slugify(label) }
+		});
+	}
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		className: "relative",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Search, { className: "pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" }),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+				value: q,
+				suppressHydrationWarning: true,
+				onChange: (e) => {
+					setQ(e.target.value);
+					setOpen(true);
+				},
+				onFocus: () => setOpen(true),
+				onBlur: () => {
+					window.setTimeout(() => setOpen(false), 120);
+				},
+				onKeyDown: (e) => {
+					if (e.key === "Enter" && hits[0]) {
+						e.preventDefault();
+						go(hits[0].l);
+					}
+					if (e.key === "Escape") setOpen(false);
+				},
+				placeholder: "Jump to a preferred term",
+				className: "h-10 w-full rounded-sm border border-border-strong bg-elevated pl-9 pr-3 text-sm text-fg placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/40",
+				"aria-label": "Search LCGFT terms"
+			}),
+			open && hits.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
+				className: "absolute right-0 z-50 mt-1 max-h-80 w-full overflow-auto rounded-md border border-border bg-surface py-1 shadow-soft",
+				children: hits.map((t) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+					type: "button",
+					className: "flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-elevated",
+					onMouseDown: (e) => e.preventDefault(),
+					onClick: () => go(t.l),
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: t.l }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+						className: "font-mono text-[0.65rem] text-subtle",
+						children: ["d", t.d]
+					})]
+				}) }, t.i))
+			}) : null
+		]
+	});
+}
+var NAV = [
+	{
+		to: "/",
+		label: "Command",
+		icon: LayoutDashboard
+	},
+	{
+		to: "/authority",
+		label: "Authority",
+		icon: Search
+	},
+	{
+		to: "/forest",
+		label: "Forest",
+		icon: FolderTree
+	},
+	{
+		to: "/assign",
+		label: "Assign",
+		icon: Tags
+	},
+	{
+		to: "/policy",
+		label: "Policy",
+		icon: Scale
+	},
+	{
+		to: "/coverage",
+		label: "Coverage",
+		icon: ChartPie
+	}
+];
+function AppShell({ children }) {
+	const pathname = useRouterState({ select: (s) => s.location.pathname });
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		className: "min-h-dvh bg-bg text-fg",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("a", {
+				href: "#main",
+				className: "sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-sm focus:bg-paper focus:px-3 focus:py-2 focus:text-accent-fg",
+				children: "Skip to content"
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "flex min-h-dvh",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("aside", {
+					className: "sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-border bg-surface md:flex",
+					children: [
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+							className: "px-5 pb-4 pt-6",
+							children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Link, {
+								to: "/",
+								className: "block",
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+									className: "font-display text-lg font-medium tracking-tight text-fg",
+									children: "MANGU Atlas"
+								}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+									className: "mt-0.5 text-xs uppercase tracking-[0.16em] text-subtle",
+									children: "Catalog authority"
+								})]
+							})
+						}),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", {
+							className: "flex flex-1 flex-col gap-0.5 px-3",
+							children: NAV.map((item) => {
+								const active = item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
+								const Icon = item.icon;
+								return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Link, {
+									to: item.to,
+									className: cn("flex h-11 items-center gap-3 rounded-md px-3 text-sm transition-colors duration-150", active ? "bg-elevated text-fg" : "text-muted hover:bg-elevated/60 hover:text-fg"),
+									children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, {
+										className: "size-4 shrink-0",
+										strokeWidth: 1.75
+									}), item.label]
+								}, item.to);
+							})
+						}),
+						/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+							className: "border-t border-border px-5 py-4 text-xs text-subtle",
+							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
+								className: "flex items-center gap-2",
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(BookOpen, { className: "size-3.5" }), "LCGFT · LOC"]
+							}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+								className: "mt-1",
+								children: "Snapshot 15 Sep 2026"
+							})]
+						})
+					]
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+					className: "flex min-w-0 flex-1 flex-col",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("header", {
+						className: "sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-bg/90 px-4 backdrop-blur md:h-16 md:px-8",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Link, {
+							to: "/",
+							className: "font-display text-base md:hidden",
+							children: "Atlas"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+							className: "ml-auto w-full max-w-md",
+							children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CommandPalette, {})
+						})]
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("main", {
+						id: "main",
+						className: "flex-1 px-4 pb-24 pt-6 md:px-8 md:pb-12 md:pt-8",
+						children
+					})]
+				})]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", {
+				className: "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur md:hidden",
+				children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
+					className: "grid grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)]",
+					children: NAV.slice(0, 5).map((item) => {
+						const active = item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
+						const Icon = item.icon;
+						return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Link, {
+							to: item.to,
+							className: cn("flex h-14 flex-col items-center justify-center gap-1 text-[0.65rem] uppercase tracking-wide", active ? "text-fg" : "text-subtle"),
+							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Icon, {
+								className: "size-5",
+								strokeWidth: 1.75
+							}), item.label]
+						}) }, item.to);
+					})
+				})
+			})
+		]
+	});
+}
+var styles_default = "/assets/styles-DgFNWK0H.css";
+var APP_NAME = "MANGU Atlas";
+var Route$7 = createRootRoute({
+	head: () => ({
+		meta: [
+			{ charSet: "utf-8" },
+			{
+				name: "viewport",
+				content: "width=device-width, initial-scale=1"
+			},
+			{ title: APP_NAME },
+			{
+				name: "theme-color",
+				content: "#0b0c0e"
+			},
+			{
+				name: "description",
+				content: "MANGU Atlas — enterprise LCGFT catalog authority: search, hierarchy, assignment, and policy."
+			}
+		],
+		links: [
+			{
+				rel: "icon",
+				type: "image/svg+xml",
+				href: "/favicon.svg"
+			},
+			{
+				rel: "stylesheet",
+				href: styles_default
+			},
+			{
+				rel: "manifest",
+				href: "/__grok/manifest.webmanifest"
+			},
+			{
+				rel: "apple-touch-icon",
+				href: "/__grok/icon-180.png"
+			},
+			{
+				rel: "stylesheet",
+				href: "https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap"
+			}
+		]
+	}),
+	component: () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("html", {
+		lang: "en",
+		className: "antialiased",
+		suppressHydrationWarning: true,
+		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("head", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HeadContent, {}) }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("body", {
+			className: "bg-bg text-fg",
+			children: [
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)(PreviewHostBridge, {}),
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)(AuthProvider, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AppShell, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Outlet, {}) }) }),
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Scripts, {})
+			]
+		})]
+	})
+});
+var $$splitComponentImporter$6 = () => import("./routes-CgNevys-.mjs");
+var Route$6 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$6, "component") });
+var $$splitComponentImporter$5 = () => import("./assign-Ca7ClOke.mjs");
+var Route$5 = createFileRoute("/assign")({ component: lazyRouteComponent($$splitComponentImporter$5, "component") });
+var $$splitComponentImporter$4 = () => import("./authority-CPrG8gvq.mjs");
+var Route$4 = createFileRoute("/authority")({ component: lazyRouteComponent($$splitComponentImporter$4, "component") });
+var $$splitComponentImporter$3 = () => import("./coverage-CQnCUpcR.mjs");
+var Route$3 = createFileRoute("/coverage")({ component: lazyRouteComponent($$splitComponentImporter$3, "component") });
+var $$splitComponentImporter$2 = () => import("./forest-D8U71Kd0.mjs");
+var Route$2 = createFileRoute("/forest")({ component: lazyRouteComponent($$splitComponentImporter$2, "component") });
+var $$splitComponentImporter$1 = () => import("./policy-DVN2rg9U.mjs");
+var Route$1 = createFileRoute("/policy")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
+var $$splitComponentImporter = () => import("./term._slug-B-dBLByQ.mjs");
+var Route = createFileRoute("/term/$slug")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
+var rootRouteChildren = {
+	IndexRoute: Route$6.update({
+		id: "/",
+		path: "/",
+		getParentRoute: () => Route$7
+	}),
+	AssignRoute: Route$5.update({
+		id: "/assign",
+		path: "/assign",
+		getParentRoute: () => Route$7
+	}),
+	AuthorityRoute: Route$4.update({
+		id: "/authority",
+		path: "/authority",
+		getParentRoute: () => Route$7
+	}),
+	CoverageRoute: Route$3.update({
+		id: "/coverage",
+		path: "/coverage",
+		getParentRoute: () => Route$7
+	}),
+	ForestRoute: Route$2.update({
+		id: "/forest",
+		path: "/forest",
+		getParentRoute: () => Route$7
+	}),
+	PolicyRoute: Route$1.update({
+		id: "/policy",
+		path: "/policy",
+		getParentRoute: () => Route$7
+	}),
+	TermSlugRoute: Route.update({
+		id: "/term/$slug",
+		path: "/term/$slug",
+		getParentRoute: () => Route$7
+	})
+};
+var routeTree = Route$7._addFileChildren(rootRouteChildren)._addFileTypes();
+var router_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
+function getRouter() {
+	return createRouter({
+		routeTree,
+		defaultErrorComponent: AppErrorComponent
+	});
+}
+//#endregion
+export { terms as _, STATS as a, cn as b, familyLabels as c, getTerm as d, has as f, slugify as g, searchTerms as h, SOURCE as i, fromSlug as l, parentsOf as m, Route as n, breadcrumb as o, isSatellite as p, F as r, childrenOf as s, router_exports as t, getByLabel as u, topIds as v, validateAssignment as y };
